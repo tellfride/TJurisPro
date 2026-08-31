@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>JurisPRO — Detalhe do Empréstimo</title>
+  <link rel="icon" href="/assets/img/favicon.png" />
+  <link rel="stylesheet" href="/assets/css/theme.css" />
+  <link rel="stylesheet" href="/assets/css/styles.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar" id="sidebarSlot"></aside>
+    <div class="main-area">
+      <header class="topbar" id="topbarSlot"></header>
+      <main class="content">
+        <a href="javascript:history.back()" class="text-muted" style="font-size:0.85rem;">&larr; Voltar</a>
+
+        <div class="card mt-1" id="loanSummaryCard"></div>
+
+        <div class="card mt-1" id="clientContactCard"></div>
+
+        <div class="flex gap-1 mt-1" id="loanActions"></div>
+
+        <div class="mt-2">
+          <h3>Parcelas</h3>
+          <div class="table-wrap mt-1">
+            <table>
+              <thead>
+                <tr>
+                  <th>#</th><th>Vencimento</th><th>Valor</th><th>Multa acumulada</th>
+                  <th>Pago</th><th>Status</th><th></th>
+                </tr>
+              </thead>
+              <tbody id="installmentsBody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="mt-2">
+          <h3>Histórico de pagamentos</h3>
+          <div class="table-wrap mt-1">
+            <table>
+              <thead>
+                <tr><th>Data</th><th>Valor pago</th><th>Multa incluída</th><th>Observações</th></tr>
+              </thead>
+              <tbody id="paymentsBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <div class="modal-backdrop hidden" id="payModalBackdrop">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>Registrar pagamento</h3>
+        <button class="icon-btn" id="closePayModal">✕</button>
+      </div>
+      <div class="error-box hidden" id="payFormError"></div>
+      <form id="payForm">
+        <input type="hidden" id="payInstallmentId" />
+        <div class="field">
+          <label for="payAmount">Valor pago (R$) *</label>
+          <input type="number" id="payAmount" min="0.01" step="0.01" required />
+        </div>
+        <div class="field">
+          <label for="payDate">Data do pagamento</label>
+          <input type="date" id="payDate" />
+        </div>
+        <div class="field">
+          <label for="payNotes">Observações</label>
+          <input type="text" id="payNotes" />
+        </div>
+        <div class="form-actions">
+          <button type="button" class="btn btn-outline" id="cancelPayModal">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Confirmar pagamento</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="modal-backdrop hidden" id="editLoanModalBackdrop">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>Editar taxa e multa</h3>
+        <button class="icon-btn" id="closeEditLoanModal">✕</button>
+      </div>
+      <div class="error-box hidden" id="editLoanFormError"></div>
+      <form id="editLoanForm">
+        <div class="field">
+          <label for="editInterestRate">Juros total do período (%)</label>
+          <input type="number" id="editInterestRate" min="0" step="0.01" required />
+        </div>
+        <div class="field">
+          <label for="editLateFee">Multa por atraso (R$/dia)</label>
+          <input type="number" id="editLateFee" min="0" step="0.01" required />
+        </div>
+        <p class="hint">As parcelas ainda em aberto serão recalculadas com o novo valor total.</p>
+        <div class="form-actions">
+          <button type="button" class="btn btn-outline" id="cancelEditLoanModal">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Salvar e recalcular</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="modal-backdrop hidden" id="payoffModalBackdrop">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>Quitação antecipada</h3>
+        <button class="icon-btn" id="closePayoffModal">✕</button>
+      </div>
+      <div class="error-box hidden" id="payoffFormError"></div>
+      <form id="payoffForm">
+        <div class="field">
+          <label for="payoffAmount">Valor final a pagar (R$) *</label>
+          <input type="number" id="payoffAmount" min="0.01" step="0.01" required />
+          <p class="hint" id="payoffSuggestionHint"></p>
+        </div>
+        <div class="field">
+          <label for="payoffDate">Data da quitação</label>
+          <input type="date" id="payoffDate" />
+        </div>
+        <div class="field">
+          <label for="payoffNotes">Observações</label>
+          <input type="text" id="payoffNotes" />
+        </div>
+        <div class="form-actions">
+          <button type="button" class="btn btn-outline" id="cancelPayoffModal">Cancelar</button>
+          <button type="submit" class="btn btn-accent">Confirmar quitação</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="/assets/js/api.js"></script>
+  <script src="/assets/js/common.js"></script>
+  <script src="/assets/js/emprestimo_detalhe.js"></script>
+</body>
+</html>

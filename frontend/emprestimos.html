@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>JurisPRO — Empréstimos</title>
+  <link rel="icon" href="/assets/img/favicon.png" />
+  <link rel="stylesheet" href="/assets/css/theme.css" />
+  <link rel="stylesheet" href="/assets/css/styles.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar" id="sidebarSlot"></aside>
+    <div class="main-area">
+      <header class="topbar" id="topbarSlot"></header>
+      <main class="content">
+        <div class="flex-between mb-1" id="filterBanner" style="display:none;">
+          <div class="text-muted" id="filterBannerText"></div>
+          <a href="/emprestimos.html" class="btn btn-sm btn-outline">Limpar filtro</a>
+        </div>
+
+        <div class="flex-between mb-1" style="flex-wrap:wrap;gap:0.75rem;">
+          <div class="flex gap-1" style="flex-wrap:wrap;">
+            <select id="companyFilter" style="display:none;max-width:220px;"></select>
+            <select id="statusFilter" style="max-width:180px;">
+              <option value="">Todos os status</option>
+              <option value="ativo">Ativo</option>
+              <option value="atrasado">Atrasado</option>
+              <option value="quitado">Quitado</option>
+            </select>
+          </div>
+          <div class="flex gap-1">
+            <button class="btn btn-outline" id="importBtn" style="display:none;">⬆ Importar planilha</button>
+            <button class="btn btn-primary" id="newLoanBtn" style="display:none;">+ Novo empréstimo</button>
+          </div>
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Nº</th>
+                <th>Cliente</th>
+                <th>Valor solicitado</th>
+                <th>Juros</th>
+                <th>Parcelas</th>
+                <th>Total a pagar</th>
+                <th>Status</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="loansBody"></tbody>
+          </table>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <div class="modal-backdrop hidden" id="loanModalBackdrop">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>Novo empréstimo</h3>
+        <button class="icon-btn" id="closeLoanModal">✕</button>
+      </div>
+      <div class="error-box hidden" id="loanFormError"></div>
+      <form id="loanForm">
+        <div class="field" id="clientPickerField">
+          <label for="clientPicker">Cliente *</label>
+          <input type="text" id="clientPicker" list="clientsDatalist" placeholder="Digite o nome do cliente" required />
+          <datalist id="clientsDatalist"></datalist>
+          <p class="hint">Escolha um cliente já cadastrado na lista ou digite um nome novo — o cliente é cadastrado automaticamente.</p>
+        </div>
+
+        <div id="newClientFields" style="display:none;">
+          <p class="hint mb-1"><strong>Cliente novo</strong> — informe os dados do solicitante:</p>
+          <div class="field-row">
+            <div class="field">
+              <label for="newClientDocument">CPF *</label>
+              <input type="text" id="newClientDocument" placeholder="000.000.000-00" />
+              <p class="hint" id="newClientDocumentHint"></p>
+            </div>
+            <div class="field">
+              <label for="newClientPhone">Telefone</label>
+              <input type="text" id="newClientPhone" />
+            </div>
+          </div>
+          <div class="field-row">
+            <div class="field">
+              <label for="newClientCep">CEP <span class="text-muted">(opcional)</span></label>
+              <input type="text" id="newClientCep" placeholder="00000-000" maxlength="9" />
+            </div>
+            <div class="field">
+              <label for="newClientAddressNumber">Número</label>
+              <input type="text" id="newClientAddressNumber" />
+            </div>
+          </div>
+          <div class="field">
+            <label for="newClientAddress">Endereço <span class="text-muted">(preenchido pelo CEP, editável)</span></label>
+            <input type="text" id="newClientAddress" />
+            <p class="hint" id="newClientCepHint"></p>
+          </div>
+          <div class="field-row">
+            <div class="field">
+              <label for="newClientRef1Name">Referência 1 - Nome</label>
+              <input type="text" id="newClientRef1Name" />
+            </div>
+            <div class="field">
+              <label for="newClientRef1Phone">Referência 1 - Telefone</label>
+              <input type="text" id="newClientRef1Phone" />
+            </div>
+          </div>
+          <div class="field-row">
+            <div class="field">
+              <label for="newClientRef2Name">Referência 2 - Nome</label>
+              <input type="text" id="newClientRef2Name" />
+            </div>
+            <div class="field">
+              <label for="newClientRef2Phone">Referência 2 - Telefone</label>
+              <input type="text" id="newClientRef2Phone" />
+            </div>
+          </div>
+          <div class="field-row">
+            <div class="field">
+              <label for="newClientRef3Name">Referência 3 - Nome</label>
+              <input type="text" id="newClientRef3Name" />
+            </div>
+            <div class="field">
+              <label for="newClientRef3Phone">Referência 3 - Telefone</label>
+              <input type="text" id="newClientRef3Phone" />
+            </div>
+          </div>
+        </div>
+
+        <div class="field-row">
+          <div class="field">
+            <label for="principal">Valor solicitado (R$) *</label>
+            <input type="number" id="principal" min="0.01" step="0.01" required />
+          </div>
+          <div class="field">
+            <label for="interestRate">Juros total do período (%) *</label>
+            <input type="number" id="interestRate" min="0" step="0.01" required />
+          </div>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label for="termMonths">Prazo (meses) *</label>
+            <input type="number" id="termMonths" min="1" max="120" step="1" required />
+          </div>
+          <div class="field">
+            <label for="lateFeePerDay">Multa por atraso (R$/dia) *</label>
+            <input type="number" id="lateFeePerDay" min="0" step="0.01" required />
+          </div>
+        </div>
+        <div class="field">
+          <label for="startDate">Data do empréstimo</label>
+          <input type="date" id="startDate" />
+        </div>
+        <div class="hint" id="loanPreview"></div>
+        <div class="form-actions">
+          <button type="button" class="btn btn-outline" id="cancelLoanModal">Cancelar</button>
+          <button type="submit" class="btn btn-primary" id="saveLoanBtn">Lançar empréstimo</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="modal-backdrop hidden" id="importModalBackdrop">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>Importar clientes e empréstimos</h3>
+        <button class="icon-btn" id="closeImportModal">✕</button>
+      </div>
+      <p class="text-muted" style="font-size:0.85rem;">
+        Cadastre vários clientes e empréstimos de uma vez só, a partir de uma planilha .xlsx.
+        <a href="#" id="downloadTemplateLink">Baixar planilha modelo</a>.
+      </p>
+      <div class="error-box hidden" id="importFormError"></div>
+      <div id="importResultBox" class="hint" style="display:none;"></div>
+      <div class="field mt-1">
+        <label for="importFile">Arquivo (.xlsx)</label>
+        <input type="file" id="importFile" accept=".xlsx" />
+      </div>
+      <div class="form-actions">
+        <button type="button" class="btn btn-outline" id="cancelImportModal">Fechar</button>
+        <button type="button" class="btn btn-primary" id="submitImportBtn">Enviar planilha</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/assets/js/api.js"></script>
+  <script src="/assets/js/common.js"></script>
+  <script src="/assets/js/emprestimos.js"></script>
+</body>
+</html>

@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>JurisPRO — Configurações</title>
+  <link rel="icon" href="/assets/img/favicon.png" />
+  <link rel="stylesheet" href="/assets/css/theme.css" />
+  <link rel="stylesheet" href="/assets/css/styles.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar" id="sidebarSlot"></aside>
+    <div class="main-area">
+      <header class="topbar" id="topbarSlot"></header>
+      <main class="content">
+        <div class="card" style="max-width:560px;">
+          <h3>Notificações via Telegram</h3>
+          <p class="text-muted" style="font-size:0.85rem;">
+            Crie um bot com o <strong>@BotFather</strong> no Telegram, copie o token gerado e o ID do
+            grupo/chat para onde deseja receber os avisos de novos clientes, novos empréstimos e
+            vencimentos próximos.
+          </p>
+
+          <div class="field mt-1" id="companyFieldWrap" style="display:none;">
+            <label for="companySelect">Empresa</label>
+            <select id="companySelect"></select>
+          </div>
+
+          <div class="error-box hidden" id="settingsError"></div>
+          <div class="error-box hidden" id="settingsSuccess" style="background:var(--color-success-bg);color:var(--color-success);"></div>
+
+          <form id="settingsForm">
+            <div class="field">
+              <label for="botToken">Token do Bot</label>
+              <input type="text" id="botToken" placeholder="123456789:ABCdefGhIJKlmNoPQRstuVwxYZ" />
+            </div>
+            <div class="field">
+              <label for="chatId">Chat ID / Group ID</label>
+              <input type="text" id="chatId" placeholder="-1001234567890" />
+            </div>
+            <div class="field">
+              <label for="notifyDays">Avisar vencimento com quantos dias de antecedência?</label>
+              <input type="number" id="notifyDays" min="0" max="60" value="5" />
+            </div>
+            <div class="form-actions">
+              <button type="submit" class="btn btn-primary">Salvar configurações</button>
+            </div>
+          </form>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <script src="/assets/js/api.js"></script>
+  <script src="/assets/js/common.js"></script>
+  <script src="/assets/js/configuracoes.js"></script>
+</body>
+</html>

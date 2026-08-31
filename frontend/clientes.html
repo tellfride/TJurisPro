@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>JurisPRO — Clientes</title>
+  <link rel="icon" href="/assets/img/favicon.png" />
+  <link rel="stylesheet" href="/assets/css/theme.css" />
+  <link rel="stylesheet" href="/assets/css/styles.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar" id="sidebarSlot"></aside>
+    <div class="main-area">
+      <header class="topbar" id="topbarSlot"></header>
+      <main class="content">
+        <div class="flex-between mb-1" style="flex-wrap:wrap;gap:0.75rem;">
+          <div class="flex gap-1" style="flex:1;min-width:220px;">
+            <input type="search" id="searchInput" placeholder="Buscar cliente por nome..." style="max-width:320px;" />
+            <select id="companyFilter" style="max-width:220px;display:none;"></select>
+          </div>
+          <button class="btn btn-primary" id="newClientBtn" style="display:none;">+ Novo cliente</button>
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Nome</th>
+                <th>Documento</th>
+                <th>Telefone</th>
+                <th>Cadastrado em</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="clientsBody"></tbody>
+          </table>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <div class="modal-backdrop hidden" id="clientModalBackdrop">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 id="clientModalTitle">Novo cliente</h3>
+        <button class="icon-btn" id="closeClientModal">✕</button>
+      </div>
+      <div class="error-box hidden" id="clientFormError"></div>
+      <form id="clientForm">
+        <input type="hidden" id="clientId" />
+        <div class="field">
+          <label for="clientName">Nome completo *</label>
+          <input type="text" id="clientName" required />
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label for="clientDocument">CPF *</label>
+            <input type="text" id="clientDocument" placeholder="000.000.000-00" required />
+            <p class="hint" id="clientDocumentHint"></p>
+          </div>
+          <div class="field">
+            <label for="clientPhone">Telefone</label>
+            <input type="text" id="clientPhone" />
+          </div>
+        </div>
+        <div class="field">
+          <label for="clientEmail">Email</label>
+          <input type="email" id="clientEmail" />
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label for="clientCep">CEP <span class="text-muted">(opcional)</span></label>
+            <input type="text" id="clientCep" placeholder="00000-000" maxlength="9" />
+          </div>
+          <div class="field">
+            <label for="clientAddressNumber">Número</label>
+            <input type="text" id="clientAddressNumber" />
+          </div>
+        </div>
+        <div class="field">
+          <label for="clientAddress">Endereço <span class="text-muted">(preenchido pelo CEP, editável)</span></label>
+          <input type="text" id="clientAddress" />
+          <p class="hint" id="clientCepHint"></p>
+        </div>
+        <div class="field">
+          <label for="clientNotes">Observações</label>
+          <textarea id="clientNotes" rows="2"></textarea>
+        </div>
+
+        <p class="hint mb-1">Contatos de referência (parentes/amigos próximos) — opcional</p>
+        <div class="field-row">
+          <div class="field">
+            <label for="ref1Name">Referência 1 - Nome</label>
+            <input type="text" id="ref1Name" />
+          </div>
+          <div class="field">
+            <label for="ref1Phone">Referência 1 - Telefone</label>
+            <input type="text" id="ref1Phone" />
+          </div>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label for="ref2Name">Referência 2 - Nome</label>
+            <input type="text" id="ref2Name" />
+          </div>
+          <div class="field">
+            <label for="ref2Phone">Referência 2 - Telefone</label>
+            <input type="text" id="ref2Phone" />
+          </div>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label for="ref3Name">Referência 3 - Nome</label>
+            <input type="text" id="ref3Name" />
+          </div>
+          <div class="field">
+            <label for="ref3Phone">Referência 3 - Telefone</label>
+            <input type="text" id="ref3Phone" />
+          </div>
+        </div>
+
+        <div class="form-actions">
+          <button type="button" class="btn btn-outline" id="cancelClientModal">Cancelar</button>
+          <button type="submit" class="btn btn-primary" id="saveClientBtn">Salvar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="/assets/js/api.js"></script>
+  <script src="/assets/js/common.js"></script>
+  <script src="/assets/js/clientes.js"></script>
+</body>
+</html>

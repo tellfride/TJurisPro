@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>JurisPRO — Auditoria</title>
+  <link rel="icon" href="/assets/img/favicon.png" />
+  <link rel="stylesheet" href="/assets/css/theme.css" />
+  <link rel="stylesheet" href="/assets/css/styles.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar" id="sidebarSlot"></aside>
+    <div class="main-area">
+      <header class="topbar" id="topbarSlot"></header>
+      <main class="content">
+        <div class="flex gap-1 mb-1" style="flex-wrap:wrap;">
+          <select id="companyFilter" style="display:none;max-width:220px;"></select>
+          <select id="entityFilter" style="max-width:200px;">
+            <option value="">Todas as ações</option>
+            <option value="client">Clientes</option>
+            <option value="loan">Empréstimos</option>
+            <option value="installment">Pagamentos</option>
+            <option value="user">Usuários</option>
+            <option value="company">Empresas</option>
+            <option value="company_notification_settings">Configurações</option>
+            <option value="import_batch">Importação de planilha</option>
+          </select>
+          <input type="date" id="dateFrom" title="De" />
+          <input type="date" id="dateTo" title="Até" />
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Data/Hora</th><th>Usuário</th><th>Ação</th><th>Entidade</th><th>Detalhes</th></tr>
+            </thead>
+            <tbody id="auditBody"></tbody>
+          </table>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <script src="/assets/js/api.js"></script>
+  <script src="/assets/js/common.js"></script>
+  <script src="/assets/js/auditoria.js"></script>
+</body>
+</html>

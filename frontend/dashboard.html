@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>JurisPRO — Dashboard</title>
+  <link rel="icon" href="/assets/img/favicon.png" />
+  <link rel="stylesheet" href="/assets/css/theme.css" />
+  <link rel="stylesheet" href="/assets/css/styles.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar" id="sidebarSlot"></aside>
+    <div class="main-area">
+      <header class="topbar" id="topbarSlot"></header>
+      <main class="content">
+        <div class="flex-between mb-1" id="companyFilterWrap" style="display:none;">
+          <div style="max-width:280px;">
+            <label for="companyFilter">Empresa</label>
+            <select id="companyFilter"></select>
+          </div>
+        </div>
+
+        <div class="stat-grid">
+          <a class="stat-card" id="cardOutstanding">
+            <div class="label">Saldo total emprestado</div>
+            <div class="value" id="statOutstanding">-</div>
+          </a>
+          <a class="stat-card accent" id="cardToReceive">
+            <div class="label">Total a receber (com juros)</div>
+            <div class="value" id="statToReceive">-</div>
+          </a>
+          <a class="stat-card success" id="cardActive">
+            <div class="label">Empréstimos ativos</div>
+            <div class="value" id="statActive">-</div>
+          </a>
+          <a class="stat-card danger" id="cardOverdue">
+            <div class="label">Empréstimos atrasados</div>
+            <div class="value" id="statOverdue">-</div>
+          </a>
+          <a class="stat-card" id="cardSettled">
+            <div class="label">Empréstimos quitados</div>
+            <div class="value" id="statSettled">-</div>
+          </a>
+        </div>
+
+        <h3 class="mt-1">Lucro (regime de caixa)</h3>
+        <div class="stat-grid">
+          <a class="stat-card success" id="cardMonthlyProfit">
+            <div class="label">Lucro do mês</div>
+            <div class="value" id="statMonthlyProfit">-</div>
+          </a>
+          <a class="stat-card accent" id="cardInterestProfit">
+            <div class="label">Lucro de juros (total)</div>
+            <div class="value" id="statInterestProfit">-</div>
+          </a>
+          <a class="stat-card danger" id="cardLateFeeProfit">
+            <div class="label">Lucro de multa por atraso (total)</div>
+            <div class="value" id="statLateFeeProfit">-</div>
+          </a>
+        </div>
+
+        <div class="card mt-1">
+          <h3>⏰ Próximos vencimentos (5 dias)</h3>
+          <div class="table-wrap mt-1">
+            <table>
+              <thead>
+                <tr><th>Cliente</th><th>Parcela</th><th>Vencimento</th><th>Valor</th><th></th></tr>
+              </thead>
+              <tbody id="upcoming5Body"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="grid-2 mt-1">
+          <div class="card">
+            <h3>Próximos vencimentos (15 dias)</h3>
+            <div class="table-wrap mt-1">
+              <table>
+                <thead>
+                  <tr><th>Cliente</th><th>Parcela</th><th>Vencimento</th><th>Valor</th><th></th></tr>
+                </thead>
+                <tbody id="upcomingBody"></tbody>
+              </table>
+            </div>
+          </div>
+          <div class="card">
+            <h3>Quem mais pega emprestado</h3>
+            <div id="topClientsWrap" class="mt-1"></div>
+          </div>
+        </div>
+
+        <div class="grid-2 mt-1">
+          <div class="card">
+            <h3>Quem mais atrasa</h3>
+            <div id="mostDelinquentWrap" class="mt-1"></div>
+          </div>
+          <div class="card">
+            <h3>Quem menos atrasa</h3>
+            <div id="bestPayersWrap" class="mt-1"></div>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <script src="/assets/js/api.js"></script>
+  <script src="/assets/js/common.js"></script>
+  <script src="/assets/js/dashboard.js"></script>
+</body>
+</html>

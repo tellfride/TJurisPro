@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>JurisPRO — Administração</title>
+  <link rel="icon" href="/assets/img/favicon.png" />
+  <link rel="stylesheet" href="/assets/css/theme.css" />
+  <link rel="stylesheet" href="/assets/css/styles.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar" id="sidebarSlot"></aside>
+    <div class="main-area">
+      <header class="topbar" id="topbarSlot"></header>
+      <main class="content">
+        <div class="grid-2">
+          <div>
+            <div class="flex-between mb-1">
+              <h3>Empresas</h3>
+              <button class="btn btn-primary btn-sm" id="newCompanyBtn">+ Nova empresa</button>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>Nome</th><th>Status</th><th></th></tr></thead>
+                <tbody id="companiesBody"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <div>
+            <div class="flex-between mb-1" style="flex-wrap:wrap;gap:0.5rem;">
+              <h3>Usuários</h3>
+              <button class="btn btn-primary btn-sm" id="newUserBtn">+ Novo usuário</button>
+            </div>
+            <div class="field mb-1">
+              <select id="usersCompanyFilter"></select>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>Nome</th><th>Email</th><th>Papel</th><th>Status</th><th></th></tr></thead>
+                <tbody id="usersBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <div class="modal-backdrop hidden" id="companyModalBackdrop">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>Nova empresa</h3>
+        <button class="icon-btn" id="closeCompanyModal">✕</button>
+      </div>
+      <div class="error-box hidden" id="companyFormError"></div>
+      <form id="companyForm">
+        <div class="field">
+          <label for="companyName">Nome da empresa *</label>
+          <input type="text" id="companyName" required />
+        </div>
+        <div class="form-actions">
+          <button type="button" class="btn btn-outline" id="cancelCompanyModal">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Salvar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="modal-backdrop hidden" id="userModalBackdrop">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>Novo usuário</h3>
+        <button class="icon-btn" id="closeUserModal">✕</button>
+      </div>
+      <div class="error-box hidden" id="userFormError"></div>
+      <form id="userForm">
+        <div class="field">
+          <label for="userRole">Papel *</label>
+          <select id="userRole">
+            <option value="gestor">Gestor</option>
+            <option value="operador">Operador</option>
+            <option value="administrador">Administrador</option>
+          </select>
+        </div>
+        <div class="field" id="userCompanyField">
+          <label for="userCompany">Empresa *</label>
+          <select id="userCompany"></select>
+        </div>
+        <div class="field">
+          <label for="userName">Nome *</label>
+          <input type="text" id="userName" required />
+        </div>
+        <div class="field">
+          <label for="userEmail">Email *</label>
+          <input type="email" id="userEmail" required />
+        </div>
+        <div class="field">
+          <label for="userPassword">Senha *</label>
+          <input type="password" id="userPassword" minlength="6" required />
+        </div>
+        <div class="form-actions">
+          <button type="button" class="btn btn-outline" id="cancelUserModal">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Salvar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="/assets/js/api.js"></script>
+  <script src="/assets/js/common.js"></script>
+  <script src="/assets/js/admin.js"></script>
+</body>
+</html>

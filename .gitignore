@@ -1,0 +1,18 @@
+# segredos / configuração local — nunca commitar
+backend/.env
+
+# ambiente virtual Python
+backend/venv/
+venv/
+
+# artefatos Python
+__pycache__/
+*.pyc
+*.pyo
+
+# backups do banco (podem conter dados reais de clientes)
+backups/*.sql
+
+# sistema operacional
+.DS_Store
+Thumbs.db
