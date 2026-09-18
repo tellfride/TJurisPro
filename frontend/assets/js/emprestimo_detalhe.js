@@ -104,19 +104,7 @@
       document.getElementById("payoffBtn").addEventListener("click", openPayoffModal);
     }
     if (loan.client.phone && canSendWhatsapp) {
-      document.getElementById("whatsappBtn").addEventListener("click", () => {
-        const message = buildLoanCollectionMessage(loan);
-        const nextInstallment = loan.installments.find((i) => i.status !== "pago");
-        openWhatsAppComposer(loan.client.phone, message, {
-          cliente: loan.client.name,
-          emprestimo: loan.loan_number,
-          valor: nextInstallment
-            ? formatMoney(Math.max(0, nextInstallment.base_amount + nextInstallment.late_fee_accrued - nextInstallment.paid_amount))
-            : "",
-          vencimento: nextInstallment ? formatDate(nextInstallment.due_date) : "",
-          parcela: nextInstallment ? nextInstallment.number : "",
-        });
-      });
+      document.getElementById("whatsappBtn").addEventListener("click", () => openLoanCollectionComposer(loan));
     }
   }
 

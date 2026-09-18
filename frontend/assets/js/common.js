@@ -581,6 +581,22 @@ function buildLoanCollectionMessage(loan) {
   );
 }
 
+// Abre o compositor de WhatsApp para cobrar a próxima parcela em aberto de um
+// empréstimo. `loan` precisa ser o detalhe completo (GET /loans/{id}: com
+// client e installments). Usado pela página do empréstimo e pela lista.
+function openLoanCollectionComposer(loan) {
+  const nextInstallment = loan.installments.find((i) => i.status !== "pago");
+  return openWhatsAppComposer(loan.client.phone, buildLoanCollectionMessage(loan), {
+    cliente: loan.client.name,
+    emprestimo: loan.loan_number,
+    valor: nextInstallment
+      ? formatMoney(Math.max(0, nextInstallment.base_amount + nextInstallment.late_fee_accrued - nextInstallment.paid_amount))
+      : "",
+    vencimento: nextInstallment ? formatDate(nextInstallment.due_date) : "",
+    parcela: nextInstallment ? nextInstallment.number : "",
+  });
+}
+
 function formatMoney(value) {
   const n = typeof value === "number" ? value : parseFloat(value || 0);
   return n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });

@@ -4,6 +4,7 @@
   renderShell("emprestimos.html");
 
   const canCreate = user.role === "gestor" || (user.role === "consultor" && consultorPerm(user, "register_loans"));
+  const canSendWhatsapp = consultorPerm(user, "send_whatsapp");
   const params = new URLSearchParams(window.location.search);
   const clientId = params.get("client_id");
   const clientName = params.get("client_name");
@@ -83,11 +84,32 @@
           <td>${l.term_months}x</td>
           <td>${formatMoney(l.total_amount)}</td>
           <td><span class="status-pill status-${l.status}">${statusLabel(l.status)}</span></td>
-          <td class="text-right"><a class="btn btn-sm btn-outline" href="/emprestimo_detalhe.html?id=${l.id}">Detalhes</a></td>
+          <td class="text-right">
+            <div class="flex gap-1" style="justify-content:flex-end;">
+              ${canSendWhatsapp && l.status !== "quitado" ? `<button class="btn btn-sm btn-whatsapp collect-btn" data-loan-id="${l.id}">💬 Cobrar via WhatsApp</button>` : ""}
+              <a class="btn btn-sm btn-outline" href="/emprestimo_detalhe.html?id=${l.id}">Detalhes</a>
+            </div>
+          </td>
         </tr>`;
       })
     );
     body.innerHTML = rows.join("");
+
+    // A lista não traz telefone nem parcelas: busca o detalhe do empréstimo na hora
+    // do clique e abre o mesmo compositor da página do empréstimo.
+    body.querySelectorAll(".collect-btn").forEach((btn) =>
+      btn.addEventListener("click", async () => {
+        btn.disabled = true;
+        try {
+          const loan = await api.get(`/loans/${btn.dataset.loanId}`);
+          await openLoanCollectionComposer(loan);
+        } catch (e) {
+          alert(e.message || "Não foi possível abrir a cobrança.");
+        } finally {
+          btn.disabled = false;
+        }
+      })
+    );
   }
 
   async function fetchClientName(id) {
