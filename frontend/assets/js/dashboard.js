@@ -130,7 +130,7 @@
         <td>${formatDate(i.due_date)}</td>
         <td>${formatMoney(i.amount)}</td>
         <td class="text-right">
-          ${i.client_phone ? `<button class="btn btn-sm btn-outline whatsapp-btn" data-installment-id="${i.installment_id}" title="Enviar lembrete via WhatsApp">💬</button>` : ""}
+          ${i.client_phone ? `<button class="btn btn-sm btn-whatsapp whatsapp-btn" data-installment-id="${i.installment_id}" title="Enviar lembrete via WhatsApp">💬</button>` : ""}
         </td>
       </tr>`
       )

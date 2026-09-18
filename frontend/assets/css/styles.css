@@ -223,6 +223,11 @@ h1, h2, h3, h4 {
 .btn-accent { background: var(--color-accent); color: #1a1200; }
 .btn-accent:hover { background: var(--color-accent-hover); }
 
+/* Ações de WhatsApp (cobrança/lembrete). Verde fixo, igual nos dois temas; escuro
+   o bastante para o texto branco manter contraste AA (>= 4.5:1). */
+.btn-whatsapp { background: #0e7f42; border-color: #0e7f42; color: #ffffff; }
+.btn-whatsapp:hover { background: #0b6a37; border-color: #0b6a37; }
+
 .btn-danger { background: var(--color-danger-bg); color: var(--color-danger); }
 .btn-outline { background: transparent; border-color: var(--color-border); }
 .btn-sm { padding: 0.35rem 0.7rem; font-size: 0.78rem; }

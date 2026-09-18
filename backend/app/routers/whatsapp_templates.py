@@ -3,9 +3,10 @@ from sqlalchemy.orm import Session
 
 from ..auth import assert_company_access, require_roles
 from ..database import get_db
-from ..models import User, UserRole, WhatsappTemplate
+from ..models import Company, User, UserRole, WhatsappTemplate
 from ..schemas import WhatsappTemplateCreate, WhatsappTemplateOut, WhatsappTemplateUpdate
 from ..services.audit_logger import log_action
+from ..services.default_whatsapp_templates import ensure_default_templates
 
 router = APIRouter(prefix="/api/whatsapp-templates", tags=["whatsapp-templates"])
 
@@ -50,6 +51,30 @@ def create_template(
     db.commit()
     db.refresh(template)
     return template
+
+
+@router.post("/defaults", response_model=list[WhatsappTemplateOut])
+def add_default_templates(
+    company_id: int | None = Query(default=None),
+    user: User = Depends(require_roles(UserRole.administrador, UserRole.gestor)),
+    db: Session = Depends(get_db),
+):
+    """Adiciona os modelos de cobrança padrão que faltam na empresa (não mexe
+    nos que já existem nem nos que o gestor editou). Devolve só os criados."""
+    target_company_id = _resolve_company_id(user, company_id)
+    assert_company_access(user, target_company_id)
+    if not db.get(Company, target_company_id):
+        raise HTTPException(status_code=404, detail="Empresa não encontrada")
+    created = ensure_default_templates(db, target_company_id)
+    if created:
+        log_action(
+            db, user, "criar_modelos_whatsapp_padrao", "whatsapp_template", None,
+            {"criados": [t.name for t in created]}, company_id=target_company_id,
+        )
+    db.commit()
+    for template in created:
+        db.refresh(template)
+    return created
 
 
 @router.put("/{template_id}", response_model=WhatsappTemplateOut)

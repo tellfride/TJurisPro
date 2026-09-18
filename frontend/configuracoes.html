@@ -52,13 +52,20 @@
         <div class="card mt-2" style="max-width:640px;">
           <div class="flex-between">
             <h3>Modelos de mensagem WhatsApp</h3>
-            <button class="btn btn-primary btn-sm" id="newTemplateBtn">+ Novo modelo</button>
+            <div class="flex gap-1">
+              <button class="btn btn-outline btn-sm" id="defaultTemplatesBtn" title="Adiciona os modelos de cobrança prontos que ainda não existem">Adicionar modelos padrão</button>
+              <button class="btn btn-primary btn-sm" id="newTemplateBtn">+ Novo modelo</button>
+            </div>
           </div>
           <p class="text-muted" style="font-size:0.85rem;">
             Cadastre modelos prontos pra usar ao mandar cobrança/lembrete via WhatsApp. Use
             <code>{{cliente}}</code>, <code>{{valor}}</code>, <code>{{vencimento}}</code>,
             <code>{{parcela}}</code> e <code>{{emprestimo}}</code> — são preenchidos automaticamente
-            na hora de enviar.
+            na hora de enviar. Na hora de cobrar (botão <b>💬 Cobrar via WhatsApp</b>), escolha o
+            modelo no seletor e ajuste o texto antes de abrir o WhatsApp. O botão
+            <b>Adicionar modelos padrão</b> traz de volta os modelos prontos que você apagar.
+            <span style="display:block;margin-top:0.3rem;">Obs.: <code>{{parcela}}</code> só é preenchido ao cobrar
+            pela página do empréstimo (não pelo 💬 do dashboard).</span>
           </p>
           <div class="table-wrap mt-1">
             <table>

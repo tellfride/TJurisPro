@@ -94,7 +94,7 @@
       buttons.push(`<button class="btn btn-accent" id="payoffBtn">Quitar antecipadamente</button>`);
     }
     if (loan.client.phone && canSendWhatsapp) {
-      buttons.push(`<button class="btn btn-outline" id="whatsappBtn">💬 Cobrar via WhatsApp</button>`);
+      buttons.push(`<button class="btn btn-whatsapp" id="whatsappBtn">💬 Cobrar via WhatsApp</button>`);
     }
     actions.innerHTML = buttons.join("");
     if (loan.status !== "quitado" && canEditRate) {

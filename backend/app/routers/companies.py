@@ -8,6 +8,7 @@ from ..database import get_db
 from ..models import Client, Company, User, UserRole
 from ..schemas import CompanyCreate, CompanyOut, CompanyUpdate, LicenseStatusOut
 from ..services.audit_logger import log_action
+from ..services.default_whatsapp_templates import ensure_default_templates
 
 router = APIRouter(prefix="/api/companies", tags=["companies"])
 
@@ -67,6 +68,7 @@ def create_company(
     )
     db.add(company)
     db.flush()
+    ensure_default_templates(db, company.id)  # empresa nova já nasce com os modelos de cobrança
     log_action(db, user, "criar_empresa", "company", company.id, {"name": company.name}, company_id=company.id)
     db.commit()
     db.refresh(company)

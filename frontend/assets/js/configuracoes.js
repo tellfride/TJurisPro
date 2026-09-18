@@ -113,6 +113,24 @@
   }
 
   document.getElementById("newTemplateBtn").addEventListener("click", () => openTemplateModal(null));
+  document.getElementById("defaultTemplatesBtn").addEventListener("click", async (ev) => {
+    if (!companyId) return;
+    const btn = ev.currentTarget;
+    btn.disabled = true;
+    try {
+      const created = await api.post(`/whatsapp-templates/defaults?company_id=${companyId}`, {});
+      alert(
+        created.length
+          ? `${created.length} modelo(s) padrão adicionado(s).`
+          : "Todos os modelos padrão já estão cadastrados."
+      );
+      loadTemplates();
+    } catch (err) {
+      alert(err.message);
+    } finally {
+      btn.disabled = false;
+    }
+  });
   document.getElementById("closeTemplateModal").addEventListener("click", () => templateModal.classList.add("hidden"));
   document.getElementById("cancelTemplateModal").addEventListener("click", () => templateModal.classList.add("hidden"));
 
