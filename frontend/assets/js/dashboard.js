@@ -126,7 +126,7 @@
         (i) => `
       <tr>
         <td>${escapeHtml(i.client_name)}</td>
-        <td><a href="/emprestimo_detalhe.html?id=${i.loan_id}">Empréstimo Nº ${i.loan_number}</a></td>
+        <td><a href="/emprestimo_detalhe.html?id=${i.loan_id}">${formatOsNumber(i.loan_number)}</a></td>
         <td>${formatDate(i.due_date)}</td>
         <td>${formatMoney(i.amount)}</td>
         <td class="text-right">
@@ -140,12 +140,18 @@
       const inst = installments.find((i) => String(i.installment_id) === btn.dataset.installmentId);
       btn.addEventListener("click", () => {
         const message = buildDueSoonMessage(inst.client_name, inst.due_date, inst.amount);
-        openWhatsAppComposer(inst.client_phone, message, {
-          cliente: inst.client_name,
-          valor: formatMoney(inst.amount),
-          vencimento: formatDate(inst.due_date),
-          emprestimo: inst.loan_number,
-        });
+        openWhatsAppComposer(
+          inst.client_phone,
+          message,
+          {
+            cliente: inst.client_name,
+            valor: formatMoney(inst.amount),
+            vencimento: formatDate(inst.due_date),
+            emprestimo: inst.loan_number,
+            os: formatOsNumber(inst.loan_number),
+          },
+          { loanId: inst.loan_id }
+        );
       });
     });
   }

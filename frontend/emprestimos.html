@@ -28,6 +28,12 @@
               <option value="atrasado">Atrasado</option>
               <option value="quitado">Quitado</option>
             </select>
+            <select id="dueFilter" style="max-width:220px;" title="Empréstimos com parcela vencendo de hoje até N dias">
+              <option value="">Todos os vencimentos</option>
+              <option value="3">A vencer em até 3 dias</option>
+              <option value="5">A vencer em até 5 dias</option>
+              <option value="10">A vencer em até 10 dias</option>
+            </select>
           </div>
           <div class="flex gap-1">
             <button class="btn btn-outline" id="importBtn" style="display:none;">⬆ Importar planilha</button>
@@ -39,12 +45,13 @@
           <table>
             <thead>
               <tr>
-                <th>Nº</th>
+                <th>OS</th>
                 <th>Cliente</th>
                 <th>Valor solicitado</th>
                 <th>Juros</th>
                 <th>Parcelas</th>
                 <th>Total a pagar</th>
+                <th>Próx. vencimento</th>
                 <th>Status</th>
                 <th></th>
               </tr>

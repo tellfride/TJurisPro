@@ -1,7 +1,8 @@
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from decimal import Decimal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy import and_, case, func
 from sqlalchemy.orm import Session, joinedload
 
 from ..auth import assert_company_access, get_current_user, require_consultant_permission, require_roles
@@ -10,16 +11,20 @@ from ..models import Client, Installment, InstallmentStatus, Loan, LoanStatus, P
 from ..schemas import (
     LoanCreate,
     LoanDetailOut,
+    LoanHistoryEventOut,
     LoanOut,
     LoanPayoffRequest,
     LoanUpdate,
+    LoanWhatsappChargeRequest,
     PaymentCreate,
     PaymentOut,
 )
 from ..services.audit_logger import log_action
+from ..services.loan_history import build_loan_history
 from ..services.interest_engine import (
     apply_payment,
     calculate_total_amount,
+    format_os_number,
     generate_installments,
     next_loan_number,
     recalculate_open_installments,
@@ -48,9 +53,12 @@ def list_loans(
     company_id: int | None = Query(default=None),
     client_id: int | None = Query(default=None),
     status_filter: LoanStatus | None = Query(default=None, alias="status"),
+    due_within: int | None = Query(default=None, ge=0, le=90),
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    """`due_within=N`: só empréstimos com parcela em aberto vencendo de hoje até
+    hoje+N dias (parcela já vencida não entra — isso é "atrasado", não "a vencer")."""
     query = db.query(Loan)
     if user.role == UserRole.administrador:
         if company_id is not None:
@@ -61,7 +69,42 @@ def list_loans(
         query = query.filter(Loan.client_id == client_id)
     if status_filter is not None:
         query = query.filter(Loan.status == status_filter)
-    return query.order_by(Loan.created_at.desc()).all()
+
+    today = date.today()
+    if due_within is not None:
+        query = query.filter(
+            Loan.installments.any(
+                and_(
+                    Installment.status != InstallmentStatus.pago,
+                    Installment.due_date >= today,
+                    Installment.due_date <= today + timedelta(days=due_within),
+                )
+            )
+        )
+    loans = query.order_by(Loan.created_at.desc()).all()
+
+    if loans:
+        # Próxima parcela em aberto de cada empréstimo: a mais próxima a partir de
+        # hoje; se todas as abertas já venceram, a mais antiga delas.
+        rows = (
+            db.query(
+                Installment.loan_id,
+                func.min(case((Installment.due_date >= today, Installment.due_date), else_=None)),
+                func.min(Installment.due_date),
+            )
+            .filter(
+                Installment.loan_id.in_([l.id for l in loans]),
+                Installment.status != InstallmentStatus.pago,
+            )
+            .group_by(Installment.loan_id)
+            .all()
+        )
+        next_due = {loan_id: upcoming or oldest for loan_id, upcoming, oldest in rows}
+        for l in loans:
+            l.next_due_date = next_due.get(l.id)
+        if due_within is not None:
+            loans.sort(key=lambda l: l.next_due_date or date.max)  # mais urgente primeiro
+    return loans
 
 
 @router.get("/{loan_id}", response_model=LoanDetailOut)
@@ -69,6 +112,37 @@ def get_loan(loan_id: int, user: User = Depends(get_current_user), db: Session =
     loan = _get_loan_or_404(db, loan_id)
     assert_company_access(user, loan.company_id)
     return loan
+
+
+@router.get("/{loan_id}/history", response_model=list[LoanHistoryEventOut])
+def get_loan_history(loan_id: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Histórico da OS: abertura, pagamentos, quitação, ajustes de juros/multa e
+    cobranças por WhatsApp — do mais recente para o mais antigo."""
+    loan = _get_loan_or_404(db, loan_id)
+    assert_company_access(user, loan.company_id)
+    return build_loan_history(db, loan)
+
+
+@router.post("/{loan_id}/whatsapp-charge", status_code=status.HTTP_201_CREATED)
+def log_whatsapp_charge(
+    loan_id: int,
+    payload: LoanWhatsappChargeRequest,
+    user: User = Depends(require_roles(UserRole.administrador, UserRole.gestor, UserRole.consultor)),
+    db: Session = Depends(get_db),
+):
+    """Registra no histórico da OS que uma cobrança foi aberta no WhatsApp (o
+    envio em si acontece no WhatsApp do usuário; aqui fica o registro de quem,
+    quando e com qual texto)."""
+    require_consultant_permission(db, user, "send_whatsapp")
+    loan = _get_loan_or_404(db, loan_id)
+    assert_company_access(user, loan.company_id)
+    log_action(
+        db, user, "cobranca_whatsapp", "loan", loan.id,
+        {"os": format_os_number(loan.loan_number), "message": payload.message[:1000], "template": payload.template},
+        company_id=loan.company_id,
+    )
+    db.commit()
+    return {"ok": True}
 
 
 @router.post("", response_model=LoanDetailOut, status_code=status.HTTP_201_CREATED)
@@ -125,7 +199,7 @@ def create_loan(
     notify_company(
         db, user.company_id,
         (
-            f"💰 <b>Novo empréstimo lançado</b>\n"
+            f"💰 <b>Nova OS lançada: {format_os_number(loan.loan_number)}</b>\n"
             f"Cliente: {client.name}\n"
             f"Valor solicitado: R$ {principal:.2f}\n"
             f"Juros: {rate:.2f}%\n"

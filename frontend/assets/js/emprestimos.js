@@ -19,6 +19,8 @@
 
   const statusParam = params.get("status");
   if (statusParam) document.getElementById("statusFilter").value = statusParam;
+  const dueParam = params.get("due_within");
+  if (dueParam) document.getElementById("dueFilter").value = dueParam;
 
   if (canCreate) {
     document.getElementById("newLoanBtn").style.display = "inline-flex";
@@ -46,11 +48,12 @@
   }
 
   document.getElementById("statusFilter").addEventListener("change", loadLoans);
+  document.getElementById("dueFilter").addEventListener("change", loadLoans);
 
   async function loadLoans() {
     const body = document.getElementById("loansBody");
     if (user.role === "administrador" && !companyFilter && !clientId) {
-      body.innerHTML = `<tr><td colspan="8" class="empty-state">Selecione uma empresa para ver os empréstimos</td></tr>`;
+      body.innerHTML = `<tr><td colspan="9" class="empty-state">Selecione uma empresa para ver os empréstimos</td></tr>`;
       return;
     }
     const query = new URLSearchParams();
@@ -58,17 +61,19 @@
     if (clientId) query.set("client_id", clientId);
     const status = document.getElementById("statusFilter").value;
     if (status) query.set("status", status);
+    const dueWithin = document.getElementById("dueFilter").value;
+    if (dueWithin) query.set("due_within", dueWithin);
 
     let loans;
     try {
       loans = await api.get(`/loans?${query.toString()}`);
     } catch (e) {
-      body.innerHTML = `<tr><td colspan="8" class="empty-state">Erro ao carregar empréstimos</td></tr>`;
+      body.innerHTML = `<tr><td colspan="9" class="empty-state">Erro ao carregar empréstimos</td></tr>`;
       return;
     }
 
     if (loans.length === 0) {
-      body.innerHTML = `<tr><td colspan="8" class="empty-state">Nenhum empréstimo encontrado</td></tr>`;
+      body.innerHTML = `<tr><td colspan="9" class="empty-state">Nenhum empréstimo encontrado</td></tr>`;
       return;
     }
 
@@ -77,12 +82,13 @@
         const clientNameCell = clientsById[l.client_id] || (await fetchClientName(l.client_id));
         return `
         <tr>
-          <td>${l.loan_number}</td>
+          <td><strong>${formatOsNumber(l.loan_number)}</strong></td>
           <td>${escapeHtml(clientNameCell)}</td>
           <td>${formatMoney(l.principal)}</td>
           <td>${Number(l.interest_rate).toFixed(2)}%</td>
           <td>${l.term_months}x</td>
           <td>${formatMoney(l.total_amount)}</td>
+          <td>${renderNextDue(l)}</td>
           <td><span class="status-pill status-${l.status}">${statusLabel(l.status)}</span></td>
           <td class="text-right">
             <div class="flex gap-1" style="justify-content:flex-end;">
@@ -110,6 +116,15 @@
         }
       })
     );
+  }
+
+  // Vencimento da próxima parcela em aberto + quantos dias faltam (ou de atraso).
+  function renderNextDue(loan) {
+    if (loan.status === "quitado" || !loan.next_due_date) return `<span class="text-muted">—</span>`;
+    const days = Math.round((new Date(loan.next_due_date + "T00:00:00") - new Date(new Date().toDateString())) / 86400000);
+    const hint = days < 0 ? `${-days}d em atraso` : days === 0 ? "hoje" : `em ${days}d`;
+    const style = days < 0 ? ' style="color:var(--color-danger);"' : "";
+    return `${formatDate(loan.next_due_date)} <span class="text-muted"${style}>(${hint})</span>`;
   }
 
   async function fetchClientName(id) {

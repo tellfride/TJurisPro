@@ -336,8 +336,11 @@ function renderWhatsappTemplate(content, vars) {
 // WhatsApp — permite escolher um modelo cadastrado pela empresa ou escrever
 // à vontade antes de enviar. Cria o modal na primeira vez que é chamado e
 // reaproveita depois. `templateVars` alimenta os placeholders {{...}} dos
-// modelos (ex: {cliente, valor, vencimento, parcela, emprestimo}).
-async function openWhatsAppComposer(phone, defaultMessage, templateVars) {
+// modelos (ex: {cliente, valor, vencimento, parcela, emprestimo, os}).
+// `context` (opcional): { loanId, onLogged } — com loanId, ao abrir o WhatsApp a
+// cobrança é registrada no histórico da OS (best-effort: se falhar, o WhatsApp
+// abre do mesmo jeito); onLogged() roda depois do registro (ex.: recarregar).
+async function openWhatsAppComposer(phone, defaultMessage, templateVars, context) {
   const digits = (phone || "").replace(/\D/g, "");
   if (digits.length < 10) {
     alert("Telefone do cliente inválido ou não cadastrado.");
@@ -403,8 +406,16 @@ async function openWhatsAppComposer(phone, defaultMessage, templateVars) {
 
   document.getElementById("sendWhatsappComposer").onclick = () => {
     const finalMessage = document.getElementById("whatsappComposerText").value;
-    openWhatsApp(phone, finalMessage);
+    const opened = openWhatsApp(phone, finalMessage);
     backdrop.classList.add("hidden");
+    if (opened && context && context.loanId) {
+      const selected = templateSelect.selectedOptions[0];
+      const template = templateSelect.value && selected ? selected.textContent : null;
+      api
+        .post(`/loans/${context.loanId}/whatsapp-charge`, { message: finalMessage, template })
+        .then(() => typeof context.onLogged === "function" && context.onLogged())
+        .catch(() => {});
+    }
   };
   backdrop.classList.remove("hidden");
 }
@@ -562,7 +573,7 @@ function buildDueSoonMessage(clientName, dueDateIso, amount) {
 // Monta uma mensagem de cobrança/lembrete a partir do estado atual do
 // empréstimo (usado na tela de detalhe do empréstimo).
 function buildLoanCollectionMessage(loan) {
-  const greeting = `Olá, ${loan.client.name}! Aqui é da equipe responsável pelo seu empréstimo Nº ${loan.loan_number}.`;
+  const greeting = `Olá, ${loan.client.name}! Aqui é da equipe responsável pelo seu empréstimo (${formatOsNumber(loan.loan_number)}).`;
   const nextInstallment = loan.installments.find((i) => i.status !== "pago");
   if (!nextInstallment) {
     return `${greeting} Passando para avisar que o empréstimo está totalmente quitado. Obrigado!`;
@@ -583,18 +594,41 @@ function buildLoanCollectionMessage(loan) {
 
 // Abre o compositor de WhatsApp para cobrar a próxima parcela em aberto de um
 // empréstimo. `loan` precisa ser o detalhe completo (GET /loans/{id}: com
-// client e installments). Usado pela página do empréstimo e pela lista.
-function openLoanCollectionComposer(loan) {
+// client e installments). Usado pela página do empréstimo e pela lista. A cobrança
+// aberta fica registrada no histórico da OS; onLogged() é chamado depois disso.
+function openLoanCollectionComposer(loan, onLogged) {
   const nextInstallment = loan.installments.find((i) => i.status !== "pago");
-  return openWhatsAppComposer(loan.client.phone, buildLoanCollectionMessage(loan), {
-    cliente: loan.client.name,
-    emprestimo: loan.loan_number,
-    valor: nextInstallment
-      ? formatMoney(Math.max(0, nextInstallment.base_amount + nextInstallment.late_fee_accrued - nextInstallment.paid_amount))
-      : "",
-    vencimento: nextInstallment ? formatDate(nextInstallment.due_date) : "",
-    parcela: nextInstallment ? nextInstallment.number : "",
-  });
+  return openWhatsAppComposer(
+    loan.client.phone,
+    buildLoanCollectionMessage(loan),
+    {
+      cliente: loan.client.name,
+      emprestimo: loan.loan_number,
+      os: formatOsNumber(loan.loan_number),
+      valor: nextInstallment
+        ? formatMoney(Math.max(0, nextInstallment.base_amount + nextInstallment.late_fee_accrued - nextInstallment.paid_amount))
+        : "",
+      vencimento: nextInstallment ? formatDate(nextInstallment.due_date) : "",
+      parcela: nextInstallment ? nextInstallment.number : "",
+    },
+    { loanId: loan.id, onLogged }
+  );
+}
+
+// Número da Ordem de Serviço (OS) do empréstimo: OS-0001, OS-0002... É o próprio
+// loan_number (sequencial por empresa, único, independente do cliente). Mantenha
+// o formato igual a format_os_number() no backend (services/interest_engine.py).
+function formatOsNumber(loanNumber) {
+  return "OS-" + String(loanNumber).padStart(4, "0");
+}
+
+// O servidor manda data/hora em UTC sem fuso (ex.: 2026-09-18T18:39:27). Sem o "Z"
+// o navegador leria como horário local e mostraria 3h errado (às vezes o dia errado).
+function parseUtc(iso) {
+  return new Date(/[zZ]$|[+-]\d\d:?\d\d$/.test(iso) ? iso : iso + "Z");
+}
+function formatDateTime(iso) {
+  return parseUtc(iso).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
 }
 
 function formatMoney(value) {

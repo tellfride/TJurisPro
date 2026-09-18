@@ -622,3 +622,39 @@ input:focus, select:focus, textarea:focus {
    embaixo para não sobrepor o card em telas baixas). */
 .login-shell { position: relative; padding-bottom: 4.5rem; }
 .login-shell .app-footer { position: absolute; left: 0; right: 0; bottom: 0; }
+
+/* ---- Histórico da OS (linha do tempo) — emprestimo_detalhe.html ---- */
+.timeline { list-style: none; margin: 0; padding: 0; }
+.timeline li {
+  display: flex;
+  gap: 0.75rem;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid var(--color-border);
+}
+.timeline li:first-child { padding-top: 0; }
+.timeline li:last-child { padding-bottom: 0; border-bottom: none; }
+.timeline .tl-icon {
+  flex: 0 0 auto;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--color-surface-alt);
+  border: 1px solid var(--color-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+}
+.timeline .tl-body { flex: 1; min-width: 0; }
+.timeline .tl-title { font-weight: 600; font-size: 0.9rem; }
+.timeline .tl-meta { color: var(--color-text-muted); font-size: 0.75rem; }
+.timeline .tl-desc { color: var(--color-text-muted); font-size: 0.82rem; margin-top: 0.2rem; word-break: break-word; }
+.timeline .tl-msg {
+  margin-top: 0.4rem;
+  padding: 0.5rem 0.7rem;
+  border-radius: var(--radius-md);
+  background: var(--color-surface-alt);
+  color: var(--color-text);
+  font-size: 0.8rem;
+  white-space: pre-wrap;
+}

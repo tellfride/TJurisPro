@@ -219,6 +219,9 @@ class LoanOut(BaseModel):
     payoff_amount: Optional[float]
     created_at: datetime
     closed_at: Optional[datetime]
+    # Só preenchido pela listagem (GET /loans): vencimento da próxima parcela em
+    # aberto (ou, se todas as abertas já venceram, a mais antiga delas).
+    next_due_date: Optional[date] = None
 
     class Config:
         from_attributes = True
@@ -228,6 +231,21 @@ class LoanDetailOut(LoanOut):
     client: ClientOut
     installments: list[InstallmentOut]
     payments: list[PaymentOut]
+
+
+class LoanHistoryEventOut(BaseModel):
+    """Um item do histórico da OS (empréstimo). `kind` diz o tipo e `data` traz
+    os campos daquele tipo (ver services/loan_history.py) — o frontend formata."""
+
+    at: datetime
+    kind: str
+    user_name: Optional[str] = None
+    data: dict[str, Any] = {}
+
+
+class LoanWhatsappChargeRequest(BaseModel):
+    message: str = Field(min_length=1, max_length=2000)
+    template: Optional[str] = Field(default=None, max_length=100)
 
 
 # ---------- Audit ----------

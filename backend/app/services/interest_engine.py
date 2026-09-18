@@ -15,16 +15,29 @@ from decimal import ROUND_HALF_UP, Decimal
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from ..models import Installment, InstallmentStatus, Loan, LoanStatus, Payment, User
+from ..models import Company, Installment, InstallmentStatus, Loan, LoanStatus, Payment, User
 
 TWO_PLACES = Decimal("0.01")
 
 
+def format_os_number(loan_number: int) -> str:
+    """Número da Ordem de Serviço (OS) de um empréstimo: OS-0001, OS-0002...
+    É o próprio loan_number, só apresentado assim — mantenha o mesmo formato em
+    formatOsNumber() no frontend (assets/js/common.js)."""
+    return f"OS-{loan_number:04d}"
+
+
 def next_loan_number(db: Session, company_id: int) -> int:
-    """Número de ordem sequencial do próximo empréstimo desta empresa (1, 2, 3...).
+    """Número de ordem sequencial do próximo empréstimo (= OS) desta empresa
+    (1, 2, 3...).
 
     Independente do cliente — a mesma pessoa pode ter vários empréstimos, cada
-    um com seu próprio número, o que distingue claramente qual é qual."""
+    um com sua própria OS, o que distingue claramente qual é qual.
+
+    Trava a linha da empresa até o fim da transação: sem isso, dois lançamentos
+    simultâneos liam o mesmo "maior número" e um deles falhava (erro 500) na
+    restrição única (empresa, número) — uma OS perdida."""
+    db.query(Company.id).filter(Company.id == company_id).with_for_update().first()
     last_number = db.query(func.max(Loan.loan_number)).filter(Loan.company_id == company_id).scalar()
     return (last_number or 0) + 1
 

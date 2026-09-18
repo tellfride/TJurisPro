@@ -51,6 +51,7 @@
     editar_emprestimo: "Editou empréstimo",
     registrar_pagamento: "Registrou pagamento",
     baixar_emprestimo: "Quitou empréstimo",
+    cobranca_whatsapp: "Abriu cobrança no WhatsApp",
     editar_configuracao_notificacao: "Editou configuração de notificação",
     importar_planilha: "Importou planilha",
   };

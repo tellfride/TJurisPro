@@ -30,6 +30,79 @@
     renderActions();
     renderInstallments();
     renderPayments();
+    loadHistory();
+  }
+
+  // ---------- Histórico da OS (linha do tempo) ----------
+  const HISTORY_KINDS = {
+    aberta: { icon: "🧾", title: "OS aberta" },
+    pagamento: { icon: "💵", title: "Pagamento registrado" },
+    quitacao: { icon: "✅", title: "Quitação antecipada" },
+    edicao: { icon: "✏️", title: "Juros/multa ajustados" },
+    cobranca_whatsapp: { icon: "💬", title: "Cobrança via WhatsApp" },
+  };
+
+  // Devolve HTML — todo texto vindo do banco passa por escapeHtml aqui.
+  function historyDescription(kind, d) {
+    d = d || {};
+    if (kind === "aberta") {
+      return (
+        `${escapeHtml(d.client)} · ${formatMoney(d.principal)} a ${Number(d.interest_rate).toFixed(2)}% em ${Number(d.term_months)}x` +
+        ` · total ${formatMoney(d.total_amount)} · multa ${formatMoney(d.late_fee_per_day)}/dia`
+      );
+    }
+    if (kind === "pagamento") {
+      const fee = Number(d.late_fee_included) > 0 ? ` (inclui ${formatMoney(d.late_fee_included)} de multa)` : "";
+      const notes = d.notes ? ` · ${escapeHtml(d.notes)}` : "";
+      return `${formatMoney(d.amount)} na parcela ${Number(d.installment_number)}${fee} · pago em ${formatDate(d.payment_date)}${notes}`;
+    }
+    if (kind === "quitacao") {
+      const notes = d.notes ? ` · ${escapeHtml(d.notes)}` : "";
+      return `${formatMoney(d.amount)} · em ${formatDate(d.payment_date)}${notes}`;
+    }
+    if (kind === "edicao") {
+      const parts = [];
+      if (d.interest_rate != null) parts.push(`juros ${Number(d.interest_rate).toFixed(2)}%`);
+      if (d.late_fee_per_day != null) parts.push(`multa ${formatMoney(d.late_fee_per_day)}/dia`);
+      return parts.length ? `Novos valores: ${parts.join(" · ")}` : "";
+    }
+    if (kind === "cobranca_whatsapp") {
+      const message = String(d.message || "");
+      const shown = message.length > 300 ? message.slice(0, 300) + "…" : message;
+      return (
+        `${d.template ? `Modelo: ${escapeHtml(d.template)}` : "Mensagem automática/personalizada"}` +
+        `<div class="tl-msg">${escapeHtml(shown)}</div>`
+      );
+    }
+    return "";
+  }
+
+  function renderHistoryEvent(e) {
+    const meta = HISTORY_KINDS[e.kind] || { icon: "•", title: escapeHtml(e.kind) };
+    const who = e.user_name ? ` · ${escapeHtml(e.user_name)}` : "";
+    return `
+      <li>
+        <span class="tl-icon">${meta.icon}</span>
+        <div class="tl-body">
+          <div class="flex-between" style="gap:0.75rem;flex-wrap:wrap;">
+            <span class="tl-title">${meta.title}</span>
+            <span class="tl-meta">${formatDateTime(e.at)}${who}</span>
+          </div>
+          <div class="tl-desc">${historyDescription(e.kind, e.data)}</div>
+        </div>
+      </li>`;
+  }
+
+  async function loadHistory() {
+    const list = document.getElementById("historyList");
+    try {
+      const events = await api.get(`/loans/${loanId}/history`);
+      list.innerHTML = events.length
+        ? events.map(renderHistoryEvent).join("")
+        : `<li class="empty-state">Nenhum evento registrado</li>`;
+    } catch (e) {
+      list.innerHTML = `<li class="empty-state">Não foi possível carregar o histórico</li>`;
+    }
   }
 
   function renderSummary() {
@@ -37,7 +110,7 @@
       <div class="flex-between" style="flex-wrap:wrap;gap:0.75rem;">
         <div>
           <h2 style="margin-bottom:0.2rem;">${escapeHtml(loan.client.name)}</h2>
-          <div class="text-muted" style="font-size:0.85rem;">Empréstimo Nº ${loan.loan_number} · lançado em ${new Date(loan.created_at).toLocaleDateString("pt-BR")}</div>
+          <div class="text-muted" style="font-size:0.85rem;">Ordem de serviço <strong>${formatOsNumber(loan.loan_number)}</strong> · lançada em ${parseUtc(loan.created_at).toLocaleDateString("pt-BR")}</div>
         </div>
         <span class="status-pill status-${loan.status}" style="font-size:0.85rem;">${statusLabel(loan.status)}</span>
       </div>
@@ -104,7 +177,7 @@
       document.getElementById("payoffBtn").addEventListener("click", openPayoffModal);
     }
     if (loan.client.phone && canSendWhatsapp) {
-      document.getElementById("whatsappBtn").addEventListener("click", () => openLoanCollectionComposer(loan));
+      document.getElementById("whatsappBtn").addEventListener("click", () => openLoanCollectionComposer(loan, loadHistory));
     }
   }
 
