@@ -161,6 +161,41 @@ h1, h2, h3, h4 {
 .badge-admin { background: var(--color-primary); color: #fff; }
 .badge-gestor { background: var(--color-accent); color: #1a1200; }
 .badge-operador { background: var(--color-surface-alt); color: var(--color-text-muted); }
+.badge-consultor { background: var(--color-success-bg); color: var(--color-success); }
+
+/* ---------- License banner ---------- */
+.license-banner {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.7rem 1rem;
+  border-radius: var(--radius-md);
+  font-size: 0.85rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+}
+.license-banner.warning { background: var(--color-warning-bg); color: var(--color-warning); }
+.license-banner.danger { background: var(--color-danger-bg); color: var(--color-danger); }
+
+/* ---------- Permission toggle list (Consultor) ---------- */
+.permission-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 0.9rem;
+}
+.permission-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.5rem 0.7rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+.permission-row input { width: auto; }
+.permission-row span { flex: 1; }
 
 /* ---------- Buttons ---------- */
 .btn {

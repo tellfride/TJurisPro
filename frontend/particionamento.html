@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>JurisPRO — Particionamento</title>
+  <link rel="icon" href="/assets/img/favicon.png" />
+  <link rel="stylesheet" href="/assets/css/theme.css" />
+  <link rel="stylesheet" href="/assets/css/styles.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar" id="sidebarSlot"></aside>
+    <div class="main-area">
+      <header class="topbar" id="topbarSlot"></header>
+      <main class="content">
+        <p class="text-muted" style="font-size:0.85rem;max-width:640px;">
+          Gerencie o acesso da sua equipe. Cada <strong>Consultor</strong> é um acesso que você
+          mesmo configura — escolha exatamente o que cada um pode ver e fazer nas Permissões,
+          desde o básico (cadastrar cliente/empréstimo) até Dashboard, Relatórios e Auditoria.
+        </p>
+
+        <div class="flex-between mb-1 mt-2">
+          <h3>Consultores</h3>
+          <button class="btn btn-primary btn-sm" id="newConsultantBtn">+ Novo consultor</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Nome</th><th>Email</th><th>Status</th><th></th></tr></thead>
+            <tbody id="consultantsBody"></tbody>
+          </table>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <div class="modal-backdrop hidden" id="teamModalBackdrop">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>Novo consultor</h3>
+        <button class="icon-btn" id="closeTeamModal">✕</button>
+      </div>
+      <div class="error-box hidden" id="teamFormError"></div>
+      <form id="teamForm">
+        <div class="field">
+          <label for="teamName">Nome *</label>
+          <input type="text" id="teamName" required />
+        </div>
+        <div class="field">
+          <label for="teamEmail">Email *</label>
+          <input type="email" id="teamEmail" required />
+        </div>
+        <div class="field">
+          <label for="teamPassword">Senha *</label>
+          <input type="password" id="teamPassword" minlength="6" required />
+        </div>
+        <div class="form-actions">
+          <button type="button" class="btn btn-outline" id="cancelTeamModal">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Salvar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="/assets/js/api.js"></script>
+  <script src="/assets/js/common.js"></script>
+  <script src="/assets/js/particionamento.js"></script>
+</body>
+</html>

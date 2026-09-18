@@ -6,7 +6,7 @@ from openpyxl import Workbook
 from openpyxl.styles import Font
 from sqlalchemy.orm import Session, joinedload
 
-from ..auth import require_roles
+from ..auth import require_consultant_permission, require_roles
 from ..database import get_db
 from ..models import Client, Company, InstallmentStatus, Loan, Payment, User, UserRole
 from ..services.analytics import profit_split
@@ -25,10 +25,11 @@ def export_transactions(
     company_id: int | None = Query(default=None),
     date_from: date | None = Query(default=None),
     date_to: date | None = Query(default=None),
-    user: User = Depends(require_roles(UserRole.administrador, UserRole.gestor)),
+    user: User = Depends(require_roles(UserRole.administrador, UserRole.gestor, UserRole.consultor)),
     db: Session = Depends(get_db),
 ):
-    scope_company_id = user.company_id if user.role == UserRole.gestor else company_id
+    require_consultant_permission(db, user, "view_reports")
+    scope_company_id = user.company_id if user.role != UserRole.administrador else company_id
 
     query = (
         db.query(Payment)

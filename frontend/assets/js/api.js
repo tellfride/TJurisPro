@@ -56,6 +56,7 @@ const api = {
   get: (path) => apiFetch(path),
   post: (path, body) => apiFetch(path, { method: "POST", body: JSON.stringify(body) }),
   put: (path, body) => apiFetch(path, { method: "PUT", body: JSON.stringify(body) }),
+  delete: (path) => apiFetch(path, { method: "DELETE" }),
 };
 
 // Baixa um arquivo do backend (ex: .xlsx) autenticado e dispara o "Salvar como"

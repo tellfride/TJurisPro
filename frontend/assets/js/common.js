@@ -1,14 +1,31 @@
 const NAV_ITEMS = [
-  { href: "dashboard.html", label: "Dashboard", icon: "📊", roles: ["administrador", "gestor"] },
-  { href: "clientes.html", label: "Clientes", icon: "👤", roles: ["administrador", "gestor", "operador"] },
-  { href: "emprestimos.html", label: "Empréstimos", icon: "💰", roles: ["administrador", "gestor", "operador"] },
-  { href: "relatorios.html", label: "Relatórios", icon: "📈", roles: ["administrador", "gestor"] },
-  { href: "auditoria.html", label: "Auditoria", icon: "🛡️", roles: ["administrador", "gestor"] },
+  { href: "dashboard.html", label: "Dashboard", icon: "📊", roles: ["administrador", "gestor", "consultor"], permission: "view_dashboard" },
+  { href: "clientes.html", label: "Clientes", icon: "👤", roles: ["administrador", "gestor", "consultor"] },
+  { href: "emprestimos.html", label: "Empréstimos", icon: "💰", roles: ["administrador", "gestor", "consultor"] },
+  { href: "calculadora.html", label: "Calculadora", icon: "🧮", roles: ["administrador", "gestor", "consultor"] },
+  { href: "relatorios.html", label: "Relatórios", icon: "📈", roles: ["administrador", "gestor", "consultor"], permission: "view_reports" },
+  { href: "auditoria.html", label: "Auditoria", icon: "🛡️", roles: ["administrador", "gestor", "consultor"], permission: "view_audit" },
+  { href: "particionamento.html", label: "Particionamento", icon: "🧩", roles: ["gestor"] },
   { href: "configuracoes.html", label: "Configurações", icon: "⚙️", roles: ["administrador", "gestor"] },
   { href: "admin.html", label: "Administração", icon: "🏢", roles: ["administrador"] },
 ];
 
-const ROLE_LABELS = { administrador: "Administrador", gestor: "Gestor", operador: "Operador" };
+const ROLE_LABELS = { administrador: "Administrador", gestor: "Gestor", operador: "Operador", consultor: "Consultor" };
+
+// Para o papel Consultor, cada campo de ConsultantPermissions liga/desliga
+// uma capacidade específica (ver [[particionamento]] — o gestor habilita na
+// aba de Particionamento). Qualquer outro papel sempre retorna true aqui:
+// suas permissões continuam fixas por papel, como sempre foram.
+function consultorPerm(user, key) {
+  if (!user || user.role !== "consultor") return true;
+  return Boolean(user.permissions && user.permissions[key]);
+}
+
+function navAllowed(item, user) {
+  if (!item.roles.includes(user.role)) return false;
+  if (item.permission) return consultorPerm(user, item.permission);
+  return true;
+}
 
 function initTheme() {
   const saved = localStorage.getItem("jurispro_theme");
@@ -62,7 +79,7 @@ function renderShell(activeHref) {
   const topbarSlot = document.getElementById("topbarSlot");
   if (!sidebarSlot || !topbarSlot) return;
 
-  const links = NAV_ITEMS.filter((item) => item.roles.includes(user.role))
+  const links = NAV_ITEMS.filter((item) => navAllowed(item, user))
     .map(
       (item) =>
         `<a class="nav-link${item.href === activeHref ? " active" : ""}" href="/${item.href}">` +
@@ -116,6 +133,41 @@ function renderShell(activeHref) {
   });
   backdrop.addEventListener("click", () => setSidebarOpen(false));
   updateThemeIcon();
+
+  if (user.role !== "administrador") loadLicenseBanner();
+}
+
+// Busca o status da licença da empresa e, se estiver vencida ou vencendo em
+// breve, injeta um aviso no topo do conteúdo da página (uma vez por
+// carregamento — não fica reconsultando). Silenciosamente não faz nada se a
+// chamada falhar (ex: sessão expirando bem nesse instante).
+async function loadLicenseBanner() {
+  const content = document.querySelector(".content");
+  if (!content) return;
+  let status;
+  try {
+    status = await api.get("/companies/license-status");
+  } catch (e) {
+    return;
+  }
+  if (!status || !status.license_expires_at) return;
+
+  const expiresText = formatDate(status.license_expires_at.slice(0, 10));
+  let banner = document.getElementById("licenseBanner");
+  if (!banner) {
+    banner = document.createElement("div");
+    banner.id = "licenseBanner";
+    content.prepend(banner);
+  }
+  if (status.expired) {
+    banner.className = "license-banner danger";
+    banner.textContent = `🔒 A licença da sua empresa expirou em ${expiresText}. Fale com o administrador do sistema para renovar o plano.`;
+  } else if (status.days_remaining !== null && status.days_remaining <= 7) {
+    banner.className = "license-banner warning";
+    banner.textContent = `⏳ A licença da sua empresa vence em ${expiresText} (${status.days_remaining} dia${status.days_remaining === 1 ? "" : "s"}). Fale com o administrador do sistema para renovar.`;
+  } else {
+    banner.remove();
+  }
 }
 
 // Define o texto de uma dica e marca em vermelho quando é erro/aviso (ex:
@@ -235,6 +287,247 @@ function openWhatsApp(phone, message) {
   const url = `https://wa.me/${withCountryCode}?text=${encodeURIComponent(message)}`;
   window.open(url, "_blank", "noopener");
   return true;
+}
+
+// Modelos de mensagem WhatsApp cadastrados pela empresa (Configurações) —
+// buscados uma vez e reaproveitados pelo composer enquanto a página estiver
+// aberta (evita recarregar a lista a cada clique em "💬").
+let _whatsappTemplatesCache = null;
+async function fetchWhatsappTemplates() {
+  if (_whatsappTemplatesCache) return _whatsappTemplatesCache;
+  try {
+    _whatsappTemplatesCache = await api.get("/whatsapp-templates");
+  } catch (e) {
+    _whatsappTemplatesCache = [];
+  }
+  return _whatsappTemplatesCache;
+}
+
+// Substitui placeholders {{campo}} pelos valores em vars (ex: {{cliente}} ->
+// "Maria Silva"). Placeholder sem valor correspondente é deixado como está.
+function renderWhatsappTemplate(content, vars) {
+  return (content || "").replace(/\{\{\s*(\w+)\s*\}\}/g, (match, key) => {
+    const value = vars ? vars[key] : undefined;
+    return value === undefined || value === null ? match : String(value);
+  });
+}
+
+// Mostra um modal com a mensagem pré-preenchida (editável) antes de abrir o
+// WhatsApp — permite escolher um modelo cadastrado pela empresa ou escrever
+// à vontade antes de enviar. Cria o modal na primeira vez que é chamado e
+// reaproveita depois. `templateVars` alimenta os placeholders {{...}} dos
+// modelos (ex: {cliente, valor, vencimento, parcela, emprestimo}).
+async function openWhatsAppComposer(phone, defaultMessage, templateVars) {
+  const digits = (phone || "").replace(/\D/g, "");
+  if (digits.length < 10) {
+    alert("Telefone do cliente inválido ou não cadastrado.");
+    return;
+  }
+  const vars = templateVars || {};
+
+  let backdrop = document.getElementById("whatsappComposerBackdrop");
+  if (!backdrop) {
+    backdrop = document.createElement("div");
+    backdrop.className = "modal-backdrop hidden";
+    backdrop.id = "whatsappComposerBackdrop";
+    backdrop.innerHTML = `
+      <div class="modal">
+        <div class="modal-header">
+          <h3>💬 Mensagem via WhatsApp</h3>
+          <button class="icon-btn" id="closeWhatsappComposer" type="button">✕</button>
+        </div>
+        <div class="field" id="whatsappTemplateFieldWrap" style="display:none;">
+          <label for="whatsappTemplateSelect">Modelo cadastrado</label>
+          <select id="whatsappTemplateSelect">
+            <option value="">Mensagem automática</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="whatsappComposerText">Mensagem (personalize à vontade)</label>
+          <textarea id="whatsappComposerText" rows="6"></textarea>
+        </div>
+        <div class="form-actions">
+          <button type="button" class="btn btn-outline" id="cancelWhatsappComposer">Cancelar</button>
+          <button type="button" class="btn btn-primary" id="sendWhatsappComposer">Abrir WhatsApp</button>
+        </div>
+      </div>`;
+    document.body.appendChild(backdrop);
+    backdrop.addEventListener("click", (e) => {
+      if (e.target === backdrop) backdrop.classList.add("hidden");
+    });
+    document.getElementById("closeWhatsappComposer").addEventListener("click", () => backdrop.classList.add("hidden"));
+    document.getElementById("cancelWhatsappComposer").addEventListener("click", () => backdrop.classList.add("hidden"));
+  }
+
+  const textarea = document.getElementById("whatsappComposerText");
+  const templateSelect = document.getElementById("whatsappTemplateSelect");
+  const templateFieldWrap = document.getElementById("whatsappTemplateFieldWrap");
+
+  textarea.value = defaultMessage;
+  templateSelect.onchange = () => {
+    const templates = templateSelect._templates || [];
+    const template = templates.find((t) => String(t.id) === templateSelect.value);
+    textarea.value = template ? renderWhatsappTemplate(template.content, vars) : defaultMessage;
+  };
+
+  const templates = await fetchWhatsappTemplates();
+  templateSelect._templates = templates;
+  if (templates.length > 0) {
+    templateFieldWrap.style.display = "block";
+    templateSelect.innerHTML =
+      '<option value="">Mensagem automática</option>' +
+      templates.map((t) => `<option value="${t.id}">${escapeHtml(t.name)}</option>`).join("");
+  } else {
+    templateFieldWrap.style.display = "none";
+  }
+
+  document.getElementById("sendWhatsappComposer").onclick = () => {
+    const finalMessage = document.getElementById("whatsappComposerText").value;
+    openWhatsApp(phone, finalMessage);
+    backdrop.classList.add("hidden");
+  };
+  backdrop.classList.remove("hidden");
+}
+
+// Modal reutilizável pra trocar a senha de um usuário (operador/consultor)
+// sem precisar saber a senha antiga — usado pelo gestor/admin.
+async function openChangePasswordModal(targetUser, onSaved) {
+  let backdrop = document.getElementById("changePasswordBackdrop");
+  if (!backdrop) {
+    backdrop = document.createElement("div");
+    backdrop.className = "modal-backdrop hidden";
+    backdrop.id = "changePasswordBackdrop";
+    backdrop.innerHTML = `
+      <div class="modal">
+        <div class="modal-header">
+          <h3>Trocar senha</h3>
+          <button class="icon-btn" id="closeChangePassword" type="button">✕</button>
+        </div>
+        <p class="text-muted" id="changePasswordName" style="font-size:0.85rem;"></p>
+        <div class="error-box hidden" id="changePasswordError"></div>
+        <form id="changePasswordForm">
+          <div class="field">
+            <label for="changePasswordInput">Nova senha *</label>
+            <input type="password" id="changePasswordInput" minlength="6" required />
+          </div>
+          <div class="form-actions">
+            <button type="button" class="btn btn-outline" id="cancelChangePassword">Cancelar</button>
+            <button type="submit" class="btn btn-primary">Salvar nova senha</button>
+          </div>
+        </form>
+      </div>`;
+    document.body.appendChild(backdrop);
+    backdrop.addEventListener("click", (e) => {
+      if (e.target === backdrop) backdrop.classList.add("hidden");
+    });
+    document.getElementById("closeChangePassword").addEventListener("click", () => backdrop.classList.add("hidden"));
+    document.getElementById("cancelChangePassword").addEventListener("click", () => backdrop.classList.add("hidden"));
+  }
+
+  const form = document.getElementById("changePasswordForm");
+  const errBox = document.getElementById("changePasswordError");
+  form.reset();
+  errBox.classList.add("hidden");
+  document.getElementById("changePasswordName").textContent = `${targetUser.name} (${targetUser.email})`;
+
+  form.onsubmit = async (ev) => {
+    ev.preventDefault();
+    try {
+      await api.put(`/users/${targetUser.id}`, { password: document.getElementById("changePasswordInput").value });
+      backdrop.classList.add("hidden");
+      if (onSaved) onSaved();
+    } catch (err) {
+      errBox.textContent = err.message;
+      errBox.classList.remove("hidden");
+    }
+  };
+  backdrop.classList.remove("hidden");
+}
+
+// Rótulos exibidos para cada permissão de Consultor (ver models.py
+// ConsultantPermissions) — mesma ordem em todo lugar que os usar.
+const CONSULTANT_PERMISSION_LABELS = [
+  ["view_dashboard", "Ver Dashboard"],
+  ["register_clients", "Cadastrar clientes"],
+  ["register_loans", "Cadastrar empréstimos"],
+  ["register_payments", "Registrar pagamentos"],
+  ["edit_rates", "Editar taxa/multa do empréstimo"],
+  ["settle_loans", "Quitar empréstimo antecipadamente"],
+  ["view_reports", "Ver e exportar relatórios"],
+  ["view_audit", "Ver auditoria"],
+  ["send_whatsapp", "Enviar cobrança via WhatsApp"],
+];
+
+// Modal reutilizável (Administração e Particionamento) pra o gestor/admin
+// habilitar, campo a campo, o que um usuário Consultor pode fazer no
+// sistema. Busca o estado atual em /users/{id}/permissions e salva ao
+// clicar em Salvar; `onSaved` é chamado depois de salvar com sucesso.
+async function openConsultantPermissionsModal(targetUser, onSaved) {
+  let backdrop = document.getElementById("consultantPermsBackdrop");
+  if (!backdrop) {
+    backdrop = document.createElement("div");
+    backdrop.className = "modal-backdrop hidden";
+    backdrop.id = "consultantPermsBackdrop";
+    backdrop.innerHTML = `
+      <div class="modal">
+        <div class="modal-header">
+          <h3>Permissões do consultor</h3>
+          <button class="icon-btn" id="closeConsultantPerms" type="button">✕</button>
+        </div>
+        <p class="text-muted" id="consultantPermsName" style="font-size:0.85rem;"></p>
+        <div class="error-box hidden" id="consultantPermsError"></div>
+        <div class="permission-list" id="consultantPermsList"></div>
+        <div class="form-actions">
+          <button type="button" class="btn btn-outline" id="cancelConsultantPerms">Cancelar</button>
+          <button type="button" class="btn btn-primary" id="saveConsultantPerms">Salvar</button>
+        </div>
+      </div>`;
+    document.body.appendChild(backdrop);
+    backdrop.addEventListener("click", (e) => {
+      if (e.target === backdrop) backdrop.classList.add("hidden");
+    });
+    document.getElementById("closeConsultantPerms").addEventListener("click", () => backdrop.classList.add("hidden"));
+    document.getElementById("cancelConsultantPerms").addEventListener("click", () => backdrop.classList.add("hidden"));
+  }
+
+  const errBox = document.getElementById("consultantPermsError");
+  const list = document.getElementById("consultantPermsList");
+  errBox.classList.add("hidden");
+  document.getElementById("consultantPermsName").textContent = `${targetUser.name} (${targetUser.email})`;
+  list.innerHTML = CONSULTANT_PERMISSION_LABELS.map(
+    ([key, label]) => `
+      <label class="permission-row">
+        <input type="checkbox" data-perm="${key}" />
+        <span>${escapeHtml(label)}</span>
+      </label>`
+  ).join("");
+
+  try {
+    const perms = await api.get(`/users/${targetUser.id}/permissions`);
+    CONSULTANT_PERMISSION_LABELS.forEach(([key]) => {
+      const input = list.querySelector(`input[data-perm="${key}"]`);
+      if (input) input.checked = Boolean(perms[key]);
+    });
+  } catch (err) {
+    errBox.textContent = err.message;
+    errBox.classList.remove("hidden");
+  }
+
+  document.getElementById("saveConsultantPerms").onclick = async () => {
+    const payload = {};
+    CONSULTANT_PERMISSION_LABELS.forEach(([key]) => {
+      payload[key] = list.querySelector(`input[data-perm="${key}"]`).checked;
+    });
+    try {
+      await api.put(`/users/${targetUser.id}/permissions`, payload);
+      backdrop.classList.add("hidden");
+      if (onSaved) onSaved();
+    } catch (err) {
+      errBox.textContent = err.message;
+      errBox.classList.remove("hidden");
+    }
+  };
+  backdrop.classList.remove("hidden");
 }
 
 // Monta um lembrete simples de vencimento de parcela (usado nas tabelas de

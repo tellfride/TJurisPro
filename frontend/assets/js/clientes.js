@@ -1,10 +1,10 @@
 (async function () {
-  const user = requireAuth(["administrador", "gestor", "operador"]);
+  const user = requireAuth(["administrador", "gestor", "consultor"]);
   if (!user) return;
   renderShell("clientes.html");
 
   const canEdit = user.role === "administrador" || user.role === "gestor";
-  const canCreate = user.role === "gestor" || user.role === "operador";
+  const canCreate = user.role === "gestor" || (user.role === "consultor" && consultorPerm(user, "register_clients"));
 
   let companyFilter = "";
   let searchTimer = null;

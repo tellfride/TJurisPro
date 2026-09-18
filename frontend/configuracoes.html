@@ -48,7 +48,51 @@
             </div>
           </form>
         </div>
+
+        <div class="card mt-2" style="max-width:640px;">
+          <div class="flex-between">
+            <h3>Modelos de mensagem WhatsApp</h3>
+            <button class="btn btn-primary btn-sm" id="newTemplateBtn">+ Novo modelo</button>
+          </div>
+          <p class="text-muted" style="font-size:0.85rem;">
+            Cadastre modelos prontos pra usar ao mandar cobrança/lembrete via WhatsApp. Use
+            <code>{{cliente}}</code>, <code>{{valor}}</code>, <code>{{vencimento}}</code>,
+            <code>{{parcela}}</code> e <code>{{emprestimo}}</code> — são preenchidos automaticamente
+            na hora de enviar.
+          </p>
+          <div class="table-wrap mt-1">
+            <table>
+              <thead><tr><th>Nome</th><th>Mensagem</th><th></th></tr></thead>
+              <tbody id="templatesBody"></tbody>
+            </table>
+          </div>
+        </div>
       </main>
+    </div>
+  </div>
+
+  <div class="modal-backdrop hidden" id="templateModalBackdrop">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 id="templateModalTitle">Novo modelo</h3>
+        <button class="icon-btn" id="closeTemplateModal">✕</button>
+      </div>
+      <div class="error-box hidden" id="templateFormError"></div>
+      <form id="templateForm">
+        <input type="hidden" id="templateId" />
+        <div class="field">
+          <label for="templateName">Nome do modelo *</label>
+          <input type="text" id="templateName" required placeholder="Ex: Lembrete de vencimento" />
+        </div>
+        <div class="field">
+          <label for="templateContent">Mensagem *</label>
+          <textarea id="templateContent" rows="5" required placeholder="Olá, {{cliente}}! Sua parcela de {{valor}} vence em {{vencimento}}."></textarea>
+        </div>
+        <div class="form-actions">
+          <button type="button" class="btn btn-outline" id="cancelTemplateModal">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Salvar</button>
+        </div>
+      </form>
     </div>
   </div>
 

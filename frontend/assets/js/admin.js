@@ -4,6 +4,7 @@
   renderShell("admin.html");
 
   let companies = [];
+  let editingCompanyId = null;
 
   async function loadCompanies() {
     try {
@@ -15,10 +16,20 @@
     renderCompanyDropdowns();
   }
 
+  function licenseStatusHtml(c) {
+    if (!c.license_expires_at) return `<span class="text-muted">Sem vencimento</span>`;
+    const expires = new Date(c.license_expires_at);
+    const daysLeft = Math.ceil((expires - new Date()) / 86400000);
+    const dateText = expires.toLocaleDateString("pt-BR");
+    if (daysLeft < 0) return `<span class="status-pill status-atrasado">Expirada em ${dateText}</span>`;
+    if (daysLeft <= 7) return `<span class="status-pill status-atrasado">Vence em ${dateText} (${daysLeft}d)</span>`;
+    return `<span class="status-pill status-quitado">Até ${dateText}</span>`;
+  }
+
   function renderCompaniesTable() {
     const body = document.getElementById("companiesBody");
     if (companies.length === 0) {
-      body.innerHTML = `<tr><td colspan="3" class="empty-state">Nenhuma empresa cadastrada</td></tr>`;
+      body.innerHTML = `<tr><td colspan="5" class="empty-state">Nenhuma empresa cadastrada</td></tr>`;
       return;
     }
     body.innerHTML = companies
@@ -27,7 +38,12 @@
       <tr>
         <td>${escapeHtml(c.name)}</td>
         <td><span class="status-pill status-${c.active ? "quitado" : "atrasado"}">${c.active ? "Ativa" : "Inativa"}</span></td>
-        <td class="text-right"><button class="btn btn-sm btn-outline toggle-company" data-id="${c.id}" data-active="${c.active}">${c.active ? "Desativar" : "Ativar"}</button></td>
+        <td>${licenseStatusHtml(c)}</td>
+        <td>${c.max_clients ? c.max_clients : "Sem limite"}</td>
+        <td class="text-right">
+          <button class="btn btn-sm btn-outline edit-company" data-id="${c.id}">Editar</button>
+          <button class="btn btn-sm btn-outline toggle-company" data-id="${c.id}" data-active="${c.active}">${c.active ? "Desativar" : "Ativar"}</button>
+        </td>
       </tr>`
       )
       .join("");
@@ -38,6 +54,9 @@
         await api.put(`/companies/${btn.dataset.id}`, { active: !active });
         loadCompanies();
       })
+    );
+    document.querySelectorAll(".edit-company").forEach((btn) =>
+      btn.addEventListener("click", () => openEditCompanyModal(companies.find((c) => c.id === parseInt(btn.dataset.id))))
     );
   }
 
@@ -66,16 +85,19 @@
       body.innerHTML = `<tr><td colspan="5" class="empty-state">Nenhum usuário nesta empresa</td></tr>`;
       return;
     }
-    const roleLabels = { administrador: "Administrador", gestor: "Gestor", operador: "Operador" };
     body.innerHTML = users
       .map(
         (u) => `
       <tr>
         <td>${escapeHtml(u.name)}</td>
         <td>${escapeHtml(u.email)}</td>
-        <td>${roleLabels[u.role]}</td>
+        <td>${ROLE_LABELS[u.role]}</td>
         <td><span class="status-pill status-${u.active ? "quitado" : "atrasado"}">${u.active ? "Ativo" : "Inativo"}</span></td>
-        <td class="text-right"><button class="btn btn-sm btn-outline toggle-user" data-id="${u.id}" data-active="${u.active}">${u.active ? "Desativar" : "Ativar"}</button></td>
+        <td class="text-right">
+          ${u.role === "consultor" ? `<button class="btn btn-sm btn-outline perm-btn" data-id="${u.id}">Permissões</button>` : ""}
+          <button class="btn btn-sm btn-outline pwd-btn" data-id="${u.id}">Trocar senha</button>
+          <button class="btn btn-sm btn-outline toggle-user" data-id="${u.id}" data-active="${u.active}">${u.active ? "Desativar" : "Ativar"}</button>
+        </td>
       </tr>`
       )
       .join("");
@@ -87,6 +109,12 @@
         loadUsers();
       })
     );
+    document.querySelectorAll(".pwd-btn").forEach((btn) =>
+      btn.addEventListener("click", () => openChangePasswordModal(users.find((u) => u.id === parseInt(btn.dataset.id))))
+    );
+    document.querySelectorAll(".perm-btn").forEach((btn) =>
+      btn.addEventListener("click", () => openConsultantPermissionsModal(users.find((u) => u.id === parseInt(btn.dataset.id))))
+    );
   }
 
   document.getElementById("usersCompanyFilter").addEventListener("change", loadUsers);
@@ -94,17 +122,44 @@
   // ---------- Company modal ----------
   const companyModal = document.getElementById("companyModalBackdrop");
   document.getElementById("newCompanyBtn").addEventListener("click", () => {
+    editingCompanyId = null;
+    document.querySelector("#companyModalBackdrop .modal-header h3").textContent = "Nova empresa";
     document.getElementById("companyForm").reset();
     document.getElementById("companyFormError").classList.add("hidden");
     companyModal.classList.remove("hidden");
   });
+
+  function openEditCompanyModal(company) {
+    if (!company) return;
+    editingCompanyId = company.id;
+    document.querySelector("#companyModalBackdrop .modal-header h3").textContent = "Editar empresa";
+    document.getElementById("companyName").value = company.name;
+    document.getElementById("companyLicenseExpires").value = company.license_expires_at
+      ? company.license_expires_at.slice(0, 10)
+      : "";
+    document.getElementById("companyMaxClients").value = company.max_clients || "";
+    document.getElementById("companyFormError").classList.add("hidden");
+    companyModal.classList.remove("hidden");
+  }
+
   document.getElementById("closeCompanyModal").addEventListener("click", () => companyModal.classList.add("hidden"));
   document.getElementById("cancelCompanyModal").addEventListener("click", () => companyModal.classList.add("hidden"));
   document.getElementById("companyForm").addEventListener("submit", async (ev) => {
     ev.preventDefault();
     const errBox = document.getElementById("companyFormError");
+    const expiresDate = document.getElementById("companyLicenseExpires").value;
+    const maxClients = document.getElementById("companyMaxClients").value;
+    const payload = {
+      name: document.getElementById("companyName").value.trim(),
+      license_expires_at: expiresDate ? `${expiresDate}T23:59:59` : null,
+      max_clients: maxClients ? parseInt(maxClients) : null,
+    };
     try {
-      await api.post("/companies", { name: document.getElementById("companyName").value.trim() });
+      if (editingCompanyId) {
+        await api.put(`/companies/${editingCompanyId}`, payload);
+      } else {
+        await api.post("/companies", payload);
+      }
       companyModal.classList.add("hidden");
       loadCompanies();
     } catch (err) {

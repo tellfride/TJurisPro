@@ -13,6 +13,9 @@ __pycache__/
 # backups do banco (podem conter dados reais de clientes)
 backups/*.sql
 
+# logs de execução (ex: serviço Windows/NSSM) — trazem IPs e requisições reais
+*.log
+
 # sistema operacional
 .DS_Store
 Thumbs.db

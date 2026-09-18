@@ -1,6 +1,10 @@
 (async function () {
-  const user = requireAuth(["administrador", "gestor"]);
+  const user = requireAuth(["administrador", "gestor", "consultor"]);
   if (!user) return;
+  if (user.role === "consultor" && !consultorPerm(user, "view_reports")) {
+    window.location.href = "/clientes.html";
+    return;
+  }
   renderShell("relatorios.html");
 
   let companyId = "";

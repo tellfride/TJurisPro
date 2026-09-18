@@ -6,7 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from .database import Base, engine
-from .routers import audit, auth, clients, companies, dashboard, imports, loans, reports, settings, users
+from .routers import audit, auth, clients, companies, dashboard, imports, loans, reports, settings, users, whatsapp_templates
 from .services.scheduler import start_scheduler
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
@@ -31,6 +31,7 @@ app.include_router(audit.router)
 app.include_router(settings.router)
 app.include_router(reports.router)
 app.include_router(imports.router)
+app.include_router(whatsapp_templates.router)
 
 FRONTEND_DIR = Path(__file__).resolve().parent.parent.parent / "frontend"
 

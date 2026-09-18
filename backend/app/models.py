@@ -24,6 +24,7 @@ class UserRole(str, enum.Enum):
     administrador = "administrador"
     gestor = "gestor"
     operador = "operador"
+    consultor = "consultor"
 
 
 class LoanStatus(str, enum.Enum):
@@ -44,6 +45,8 @@ class Company(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     name: Mapped[str] = mapped_column(String(150), nullable=False)
     active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    license_expires_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    max_clients: Mapped[int | None] = mapped_column(Integer, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
 
     users: Mapped[list["User"]] = relationship(back_populates="company")
@@ -63,9 +66,15 @@ class User(Base):
     password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
     role: Mapped[UserRole] = mapped_column(Enum(UserRole), nullable=False)
     active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    failed_login_attempts: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    locked_until: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    session_token: Mapped[str | None] = mapped_column(String(64), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
 
     company: Mapped[Company | None] = relationship(back_populates="users")
+    consultant_permissions: Mapped["ConsultantPermissions"] = relationship(
+        back_populates="user", uselist=False, cascade="all, delete-orphan"
+    )
 
 
 class Client(Base):
@@ -201,3 +210,47 @@ class NotificationLog(Base):
     installment_id: Mapped[int | None] = mapped_column(ForeignKey("installments.id"), nullable=True)
     type: Mapped[str] = mapped_column(String(50), nullable=False)
     sent_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+
+
+class ConsultantPermissions(Base):
+    """Permissões individuais de um usuário 'consultor', habilitadas pelo
+    gestor da empresa na aba de Particionamento. Por padrão um consultor não
+    vê o Dashboard, mas já pode cadastrar cliente/empréstimo e mandar
+    cobrança via WhatsApp — o resto fica a critério do gestor."""
+
+    __tablename__ = "consultant_permissions"
+
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), primary_key=True)
+    view_dashboard: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    register_clients: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    register_loans: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    register_payments: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    edit_rates: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    settle_loans: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    view_reports: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    view_audit: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    send_whatsapp: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+
+    user: Mapped[User] = relationship(back_populates="consultant_permissions")
+
+
+class WhatsappTemplate(Base):
+    __tablename__ = "whatsapp_templates"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    company_id: Mapped[int] = mapped_column(ForeignKey("companies.id"), nullable=False)
+    name: Mapped[str] = mapped_column(String(100), nullable=False)
+    content: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+
+
+class LoginIpAttempt(Base):
+    """Contador de tentativas de login malsucedidas por endereço IP —
+    complementa o bloqueio por usuário (models.User) para barrar um robô
+    tentando senha em várias contas a partir do mesmo IP."""
+
+    __tablename__ = "login_ip_attempts"
+
+    ip_address: Mapped[str] = mapped_column(String(45), primary_key=True)
+    failed_attempts: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    locked_until: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)

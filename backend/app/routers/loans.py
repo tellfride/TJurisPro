@@ -4,7 +4,7 @@ from decimal import Decimal
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session, joinedload
 
-from ..auth import assert_company_access, get_current_user, require_roles
+from ..auth import assert_company_access, get_current_user, require_consultant_permission, require_roles
 from ..database import get_db
 from ..models import Client, Installment, InstallmentStatus, Loan, LoanStatus, Payment, User, UserRole
 from ..schemas import (
@@ -74,11 +74,12 @@ def get_loan(loan_id: int, user: User = Depends(get_current_user), db: Session =
 @router.post("", response_model=LoanDetailOut, status_code=status.HTTP_201_CREATED)
 def create_loan(
     payload: LoanCreate,
-    user: User = Depends(require_roles(UserRole.administrador, UserRole.gestor, UserRole.operador)),
+    user: User = Depends(require_roles(UserRole.administrador, UserRole.gestor, UserRole.consultor)),
     db: Session = Depends(get_db),
 ):
     if user.role == UserRole.administrador:
-        raise HTTPException(status_code=422, detail="Administrador não pertence a uma empresa; use o login de um gestor/operador para lançar empréstimos")
+        raise HTTPException(status_code=422, detail="Administrador não pertence a uma empresa; use o login de um gestor/consultor para lançar empréstimos")
+    require_consultant_permission(db, user, "register_loans")
     client = db.get(Client, payload.client_id)
     if not client or client.company_id != user.company_id:
         raise HTTPException(status_code=404, detail="Cliente não encontrado nesta empresa")
@@ -139,9 +140,10 @@ def create_loan(
 def update_loan(
     loan_id: int,
     payload: LoanUpdate,
-    user: User = Depends(require_roles(UserRole.administrador, UserRole.gestor)),
+    user: User = Depends(require_roles(UserRole.administrador, UserRole.gestor, UserRole.consultor)),
     db: Session = Depends(get_db),
 ):
+    require_consultant_permission(db, user, "edit_rates")
     loan = _get_loan_or_404(db, loan_id)
     assert_company_access(user, loan.company_id)
     if loan.status == LoanStatus.quitado:
@@ -166,9 +168,10 @@ def update_loan(
 def register_payment(
     loan_id: int,
     payload: PaymentCreate,
-    user: User = Depends(require_roles(UserRole.administrador, UserRole.gestor, UserRole.operador)),
+    user: User = Depends(require_roles(UserRole.administrador, UserRole.gestor, UserRole.consultor)),
     db: Session = Depends(get_db),
 ):
+    require_consultant_permission(db, user, "register_payments")
     loan = _get_loan_or_404(db, loan_id)
     assert_company_access(user, loan.company_id)
     installment = db.get(Installment, payload.installment_id)
@@ -197,9 +200,10 @@ def register_payment(
 @router.get("/{loan_id}/payoff-suggestion")
 def payoff_suggestion(
     loan_id: int,
-    user: User = Depends(require_roles(UserRole.administrador, UserRole.gestor)),
+    user: User = Depends(require_roles(UserRole.administrador, UserRole.gestor, UserRole.consultor)),
     db: Session = Depends(get_db),
 ):
+    require_consultant_permission(db, user, "settle_loans")
     loan = _get_loan_or_404(db, loan_id)
     assert_company_access(user, loan.company_id)
     return {"suggested_amount": float(suggest_early_payoff(loan))}
@@ -209,9 +213,10 @@ def payoff_suggestion(
 def settle_loan(
     loan_id: int,
     payload: LoanPayoffRequest,
-    user: User = Depends(require_roles(UserRole.administrador, UserRole.gestor)),
+    user: User = Depends(require_roles(UserRole.administrador, UserRole.gestor, UserRole.consultor)),
     db: Session = Depends(get_db),
 ):
+    require_consultant_permission(db, user, "settle_loans")
     loan = _get_loan_or_404(db, loan_id)
     assert_company_access(user, loan.company_id)
     if loan.status == LoanStatus.quitado:

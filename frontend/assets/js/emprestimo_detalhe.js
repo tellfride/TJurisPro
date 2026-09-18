@@ -1,10 +1,13 @@
 (async function () {
-  const user = requireAuth(["administrador", "gestor", "operador"]);
+  const user = requireAuth(["administrador", "gestor", "consultor"]);
   if (!user) return;
   renderShell("emprestimos.html");
 
-  const canEditLoan = user.role === "administrador" || user.role === "gestor";
-  const canRegisterPayment = true;
+  const isAdminOrGestor = user.role === "administrador" || user.role === "gestor";
+  const canEditRate = isAdminOrGestor || (user.role === "consultor" && consultorPerm(user, "edit_rates"));
+  const canSettle = isAdminOrGestor || (user.role === "consultor" && consultorPerm(user, "settle_loans"));
+  const canRegisterPayment = consultorPerm(user, "register_payments");
+  const canSendWhatsapp = consultorPerm(user, "send_whatsapp");
 
   const params = new URLSearchParams(window.location.search);
   const loanId = params.get("id");
@@ -84,24 +87,35 @@
   function renderActions() {
     const actions = document.getElementById("loanActions");
     const buttons = [];
-    if (loan.status !== "quitado" && canEditLoan) {
+    if (loan.status !== "quitado" && canEditRate) {
       buttons.push(`<button class="btn btn-outline" id="editLoanBtn">Editar taxa/multa</button>`);
+    }
+    if (loan.status !== "quitado" && canSettle) {
       buttons.push(`<button class="btn btn-accent" id="payoffBtn">Quitar antecipadamente</button>`);
     }
-    if (loan.client.phone) {
+    if (loan.client.phone && canSendWhatsapp) {
       buttons.push(`<button class="btn btn-outline" id="whatsappBtn">💬 Cobrar via WhatsApp</button>`);
     }
     actions.innerHTML = buttons.join("");
-    if (loan.status !== "quitado" && canEditLoan) {
+    if (loan.status !== "quitado" && canEditRate) {
       document.getElementById("editLoanBtn").addEventListener("click", openEditLoanModal);
+    }
+    if (loan.status !== "quitado" && canSettle) {
       document.getElementById("payoffBtn").addEventListener("click", openPayoffModal);
     }
-    if (loan.client.phone) {
+    if (loan.client.phone && canSendWhatsapp) {
       document.getElementById("whatsappBtn").addEventListener("click", () => {
         const message = buildLoanCollectionMessage(loan);
-        if (!openWhatsApp(loan.client.phone, message)) {
-          alert("Telefone do cliente inválido.");
-        }
+        const nextInstallment = loan.installments.find((i) => i.status !== "pago");
+        openWhatsAppComposer(loan.client.phone, message, {
+          cliente: loan.client.name,
+          emprestimo: loan.loan_number,
+          valor: nextInstallment
+            ? formatMoney(Math.max(0, nextInstallment.base_amount + nextInstallment.late_fee_accrued - nextInstallment.paid_amount))
+            : "",
+          vencimento: nextInstallment ? formatDate(nextInstallment.due_date) : "",
+          parcela: nextInstallment ? nextInstallment.number : "",
+        });
       });
     }
   }

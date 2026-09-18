@@ -1,9 +1,9 @@
 (async function () {
-  const user = requireAuth(["administrador", "gestor", "operador"]);
+  const user = requireAuth(["administrador", "gestor", "consultor"]);
   if (!user) return;
   renderShell("emprestimos.html");
 
-  const canCreate = user.role === "gestor" || user.role === "operador";
+  const canCreate = user.role === "gestor" || (user.role === "consultor" && consultorPerm(user, "register_loans"));
   const params = new URLSearchParams(window.location.search);
   const clientId = params.get("client_id");
   const clientName = params.get("client_name");

@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>JurisPRO — Calculadora</title>
+  <link rel="icon" href="/assets/img/favicon.png" />
+  <link rel="stylesheet" href="/assets/css/theme.css" />
+  <link rel="stylesheet" href="/assets/css/styles.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar" id="sidebarSlot"></aside>
+    <div class="main-area">
+      <header class="topbar" id="topbarSlot"></header>
+      <main class="content">
+        <p class="text-muted" style="font-size:0.85rem;max-width:640px;">
+          Simule valores antes de lançar de verdade. Nada aqui é salvo — é só uma
+          conferência rápida, usando exatamente a mesma conta que o sistema usa
+          para gerar parcelas e multa.
+        </p>
+
+        <div class="grid-2 mt-1">
+          <div class="card">
+            <h3>💰 Simulador de empréstimo</h3>
+            <p class="hint">Valor total, juros e quanto fica cada parcela.</p>
+            <div class="field-row mt-1">
+              <div class="field">
+                <label for="calcPrincipal">Valor solicitado (R$) *</label>
+                <input type="number" id="calcPrincipal" min="0.01" step="0.01" value="1000" />
+              </div>
+              <div class="field">
+                <label for="calcRate">Juros total do período (%) *</label>
+                <input type="number" id="calcRate" min="0" step="0.01" value="20" />
+              </div>
+            </div>
+            <div class="field-row">
+              <div class="field">
+                <label for="calcTerm">Prazo (meses) *</label>
+                <input type="number" id="calcTerm" min="1" max="120" step="1" value="3" />
+              </div>
+              <div class="field">
+                <label for="calcStartDate">Data do empréstimo</label>
+                <input type="date" id="calcStartDate" />
+              </div>
+            </div>
+
+            <div class="stat-grid" style="margin-bottom:0;">
+              <div class="stat-card accent">
+                <div class="label">Total a pagar</div>
+                <div class="value" id="calcLoanTotal">—</div>
+              </div>
+              <div class="stat-card">
+                <div class="label">Lucro de juros</div>
+                <div class="value" id="calcLoanProfit">—</div>
+              </div>
+            </div>
+
+            <div class="table-wrap mt-1">
+              <table>
+                <thead><tr><th>Parcela</th><th>Vencimento</th><th>Valor</th></tr></thead>
+                <tbody id="calcInstallmentsBody"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="card">
+            <h3>⏰ Calculadora de multa por atraso</h3>
+            <p class="hint">Quanto uma parcela em atraso já acumulou de multa.</p>
+            <div class="field-row mt-1">
+              <div class="field">
+                <label for="calcInstallmentValue">Valor da parcela (R$) *</label>
+                <input type="number" id="calcInstallmentValue" min="0" step="0.01" value="400" />
+              </div>
+              <div class="field">
+                <label for="calcFeePerDay">Multa por atraso (R$/dia) *</label>
+                <input type="number" id="calcFeePerDay" min="0" step="0.01" value="10" />
+              </div>
+            </div>
+            <div class="field-row">
+              <div class="field">
+                <label for="calcDueDate">Data de vencimento</label>
+                <input type="date" id="calcDueDate" />
+                <p class="hint">Preenche os dias em atraso automaticamente (a partir de hoje).</p>
+              </div>
+              <div class="field">
+                <label for="calcDaysLate">Dias em atraso *</label>
+                <input type="number" id="calcDaysLate" min="0" step="1" value="0" />
+              </div>
+            </div>
+
+            <div class="stat-grid" style="margin-bottom:0;">
+              <div class="stat-card danger">
+                <div class="label">Multa acumulada</div>
+                <div class="value" id="calcFeeTotal">—</div>
+              </div>
+              <div class="stat-card">
+                <div class="label">Parcela + multa</div>
+                <div class="value" id="calcFeeGrandTotal">—</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <script src="/assets/js/api.js"></script>
+  <script src="/assets/js/common.js"></script>
+  <script src="/assets/js/calculadora.js"></script>
+</body>
+</html>

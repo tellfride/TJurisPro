@@ -25,6 +25,7 @@ class UserOut(BaseModel):
     email: EmailField
     role: UserRole
     active: bool
+    permissions: Optional[dict[str, bool]] = None
 
     class Config:
         from_attributes = True
@@ -39,21 +40,33 @@ class TokenResponse(BaseModel):
 # ---------- Company ----------
 class CompanyCreate(BaseModel):
     name: str = Field(min_length=2, max_length=150)
+    license_expires_at: Optional[datetime] = None
+    max_clients: Optional[int] = Field(default=None, ge=1)
 
 
 class CompanyUpdate(BaseModel):
     name: Optional[str] = Field(default=None, min_length=2, max_length=150)
     active: Optional[bool] = None
+    license_expires_at: Optional[datetime] = None
+    max_clients: Optional[int] = Field(default=None, ge=1)
 
 
 class CompanyOut(BaseModel):
     id: int
     name: str
     active: bool
+    license_expires_at: Optional[datetime]
+    max_clients: Optional[int]
     created_at: datetime
 
     class Config:
         from_attributes = True
+
+
+class LicenseStatusOut(BaseModel):
+    license_expires_at: Optional[datetime]
+    days_remaining: Optional[int]
+    expired: bool
 
 
 # ---------- User ----------
@@ -247,6 +260,63 @@ class NotificationSettingsUpdate(BaseModel):
     telegram_bot_token: Optional[str] = None
     telegram_chat_id: Optional[str] = None
     notify_days_before: Optional[int] = Field(default=None, ge=0, le=60)
+
+
+# ---------- Permissões do Consultor ----------
+CONSULTANT_PERMISSION_FIELDS = [
+    "view_dashboard", "register_clients", "register_loans", "register_payments",
+    "edit_rates", "settle_loans", "view_reports", "view_audit", "send_whatsapp",
+]
+
+
+class ConsultantPermissionsOut(BaseModel):
+    user_id: int
+    view_dashboard: bool
+    register_clients: bool
+    register_loans: bool
+    register_payments: bool
+    edit_rates: bool
+    settle_loans: bool
+    view_reports: bool
+    view_audit: bool
+    send_whatsapp: bool
+
+    class Config:
+        from_attributes = True
+
+
+class ConsultantPermissionsUpdate(BaseModel):
+    view_dashboard: Optional[bool] = None
+    register_clients: Optional[bool] = None
+    register_loans: Optional[bool] = None
+    register_payments: Optional[bool] = None
+    edit_rates: Optional[bool] = None
+    settle_loans: Optional[bool] = None
+    view_reports: Optional[bool] = None
+    view_audit: Optional[bool] = None
+    send_whatsapp: Optional[bool] = None
+
+
+# ---------- Modelos de mensagem WhatsApp ----------
+class WhatsappTemplateCreate(BaseModel):
+    name: str = Field(min_length=2, max_length=100)
+    content: str = Field(min_length=1)
+
+
+class WhatsappTemplateUpdate(BaseModel):
+    name: Optional[str] = Field(default=None, min_length=2, max_length=100)
+    content: Optional[str] = Field(default=None, min_length=1)
+
+
+class WhatsappTemplateOut(BaseModel):
+    id: int
+    company_id: int
+    name: str
+    content: str
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
 
 
 # ---------- Dashboard ----------

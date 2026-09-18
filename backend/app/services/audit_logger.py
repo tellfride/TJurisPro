@@ -1,8 +1,16 @@
+import json
 from typing import Any, Optional
 
 from sqlalchemy.orm import Session
 
 from ..models import AuditLog, User
+
+
+def _json_safe(details: dict[str, Any]) -> dict[str, Any]:
+    """Alguns chamadores passam valores direto de um Pydantic model_dump()
+    (datetime, Decimal, Enum, etc.) que o encoder JSON padrão não serializa —
+    aqui viram string, mantendo o resto da estrutura intacto."""
+    return json.loads(json.dumps(details, default=str))
 
 
 def log_action(
@@ -20,6 +28,6 @@ def log_action(
         action=action,
         entity_type=entity_type,
         entity_id=entity_id,
-        details=details,
+        details=_json_safe(details) if details is not None else None,
     )
     db.add(entry)

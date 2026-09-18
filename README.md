@@ -16,7 +16,7 @@ exportação em planilha, e backup diário automático.
   telefone, email, endereço com **preenchimento automático pelo CEP** (só
   falta o número do imóvel), e até 3 contatos de referência.
 - **Empréstimos**: valor, taxa de juros do período, prazo em meses e multa
-  por atraso — tudo definido pelo operador/gestor. Cada empréstimo recebe um
+  por atraso — tudo definido pelo consultor/gestor. Cada empréstimo recebe um
   **número de ordem sequencial por empresa**, mesmo que o cliente já tenha
   outro empréstimo.
 - **Parcelas mensais** geradas automaticamente, com multa por atraso
@@ -24,9 +24,9 @@ exportação em planilha, e backup diário automático.
 - **Pagamento parcial só dos juros/multa** ("pagar só os juros"), sem
   precisar quitar a parcela inteira.
 - **Quitação antecipada** com valor final ajustável pelo gestor.
-- **Dashboard** (Gestor/Administrador, oculto para Operador): saldo
+- **Dashboard** (Gestor/Administrador, e Consultor se liberado): saldo
   emprestado, total a receber, lucro de juros e de multa (mês e total),
-  próximos vencimentos (5 e 15 dias), quem mais pega emprestado, quem mais
+  próximos vencimentos (3, 5 e 15 dias), quem mais pega emprestado, quem mais
   e quem menos atrasa — todos os cards são clicáveis.
 - **Envio de cobrança via WhatsApp**: gera a mensagem e abre o WhatsApp Web
   já com o texto pronto pra enviar (não manda sozinho).
@@ -41,8 +41,26 @@ exportação em planilha, e backup diário automático.
 - **Backup diário automático** do banco MySQL.
 - **Permissões**: Administrador (acesso total, todas as empresas) → Gestor
   (edita taxa/multa, quita empréstimo, vê dashboard/auditoria da própria
-  empresa) → Operador (cadastra cliente/empréstimo, registra pagamento, sem
-  acesso a dashboard/auditoria).
+  empresa, gerencia a equipe na aba **Particionamento**) → **Consultor**
+  (acesso configurável — o gestor liga/desliga, campo a campo, o que cada
+  consultor pode ver/fazer na aba Particionamento: de cadastrar
+  cliente/empréstimo/pagamento e mandar WhatsApp — o padrão — até Dashboard,
+  Relatórios, Auditoria, editar taxa/multa e quitar empréstimo).
+- **Licenciamento por empresa**: o Administrador define, por empresa, até
+  quando a licença vale e um limite de clientes cadastrados. Login de
+  gestor/consultor é bloqueado quando a licença vence, e a empresa é
+  avisada (banner no sistema + Telegram) a partir de 7 dias antes de vencer.
+- **Segurança de login**: 1 sessão ativa por usuário (logar em outro
+  aparelho encerra a sessão anterior), bloqueio de 5 minutos após 3 senhas
+  erradas seguidas — tanto **por conta** quanto **por endereço IP** (mesmo
+  que o robô tente senhas em contas diferentes a partir do mesmo IP, ou
+  acerte a senha depois de errar 3x, o IP fica bloqueado do mesmo jeito) —,
+  e mensagens claras de erro (senha incorreta, conta bloqueada, licença
+  expirada).
+- **Modelos de mensagem WhatsApp**: cada empresa cadastra os próprios
+  modelos (com placeholders tipo `{{cliente}}`, `{{valor}}`) na aba
+  Configurações, prontos pra escolher (ou personalizar na hora) sempre que
+  for mandar uma cobrança.
 
 ## 1. Pré-requisitos
 
@@ -83,10 +101,11 @@ Cria automaticamente todas as tabelas e o usuário Administrador definido no
 `.env`. Rode só uma vez (rodar de novo não duplica nada).
 
 > Se você estiver atualizando uma instalação já existente (não é a primeira
-> vez rodando o sistema), também rode `python migrate_v2.py` e
-> `python migrate_v3.py` uma vez — eles adicionam colunas novas em tabelas
-> que já existiam antes dessas funcionalidades (idempotente, pode rodar
-> mais de uma vez sem erro).
+> vez rodando o sistema), também rode `python migrate_v2.py`,
+> `python migrate_v3.py`, `python migrate_v4.py` e `python migrate_v5.py`
+> uma vez — eles adicionam colunas/tabelas novas e migram usuários Operador
+> (descontinuado) para Consultor (idempotente, pode rodar mais de uma vez
+> sem erro).
 
 ## 5. Rodar o sistema
 
@@ -98,11 +117,14 @@ Acesse **http://localhost:8000** e faça login com o Administrador.
 
 ## 6. Estrutura de uso
 
-1. **Administrador** cadastra as empresas (aba Administração) e os usuários
-   Gestor/Operador de cada uma.
-2. **Operador** cadastra clientes e lança empréstimos.
-3. **Gestor** acompanha o Dashboard, edita taxa/multa, registra quitações
-   antecipadas e acessa a Auditoria da própria empresa.
+1. **Administrador** cadastra as empresas (aba Administração), define a
+   licença/limite de clientes de cada uma, e os usuários Gestor de cada uma.
+2. **Gestor** acompanha o Dashboard, edita taxa/multa, registra quitações
+   antecipadas, acessa a Auditoria da própria empresa, e cadastra os
+   **Consultores** da sua equipe na aba **Particionamento** — escolhendo ali
+   exatamente o que cada consultor pode ver/fazer.
+3. **Consultor** cadastra clientes e lança empréstimos (e o que mais o
+   gestor liberar para ele).
 4. Cada empresa configura seu próprio bot do Telegram em **Configurações**.
 
 ## 7. Configurar as notificações do Telegram
@@ -142,21 +164,27 @@ backend/            # API (FastAPI) + regras de negócio + agendador
   seed.py              # cria as tabelas + primeiro Administrador
   migrate_v2.py        # migração: referências do cliente + número de ordem do empréstimo
   migrate_v3.py        # migração: CEP + número do endereço
+  migrate_v4.py        # migração: licença/limite por empresa, papel Consultor, sessão única, bloqueio de login
+  migrate_v5.py        # migração: descontinua o papel Operador (migrado para Consultor equivalente)
 frontend/           # site estático (HTML/CSS/JS puro), servido pelo próprio backend
 backups/            # saída dos backups diários do MySQL
 ```
 
 ## Papéis e permissões
 
-| Ação | Administrador | Gestor | Operador |
+| Ação | Administrador | Gestor | Consultor |
 |---|---|---|---|
 | Ver todas as empresas | ✅ | ❌ (só a própria) | ❌ (só a própria) |
-| Cadastrar cliente / empréstimo | — | ✅ | ✅ |
-| Importar planilha em massa | — | ✅ | ✅ |
-| Editar taxa de juros / multa | ✅ | ✅ | ❌ |
-| Quitar (baixar) empréstimo | ✅ | ✅ | ❌ |
-| Ver Dashboard | ✅ | ✅ | ❌ (bloqueado) |
-| Ver Auditoria | ✅ (todas) | ✅ (própria empresa) | ❌ |
-| Exportar relatórios | ✅ | ✅ | ❌ |
-| Enviar cobrança via WhatsApp | ✅ | ✅ | ✅ |
-| Cadastrar empresas/usuários | ✅ | Só operadores da própria empresa | ❌ |
+| Cadastrar cliente / empréstimo | — | ✅ | Configurável (padrão: ✅) |
+| Importar planilha em massa | — | ✅ | Configurável |
+| Registrar pagamento | — | ✅ | Configurável (padrão: ✅) |
+| Editar taxa de juros / multa | ✅ | ✅ | Configurável (padrão: ❌) |
+| Quitar (baixar) empréstimo | ✅ | ✅ | Configurável (padrão: ❌) |
+| Ver Dashboard | ✅ | ✅ | Configurável (padrão: ❌) |
+| Ver Auditoria | ✅ (todas) | ✅ (própria empresa) | Configurável (padrão: ❌) |
+| Exportar relatórios | ✅ | ✅ | Configurável (padrão: ❌) |
+| Enviar cobrança via WhatsApp | ✅ | ✅ | Configurável (padrão: ✅) |
+| Cadastrar empresas/usuários | ✅ | Consultores da própria empresa (aba Particionamento) | ❌ |
+
+"Configurável" = o gestor liga/desliga essa permissão pra cada consultor,
+individualmente, na aba **Particionamento**.

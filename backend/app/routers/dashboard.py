@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy import func
 from sqlalchemy.orm import Session, joinedload
 
-from ..auth import require_roles
+from ..auth import require_consultant_permission, require_roles
 from ..database import get_db
 from ..models import Client, Installment, InstallmentStatus, Loan, LoanStatus, Payment, User, UserRole
 from ..schemas import DashboardOut, DelinquencyClientOut, TopClientOut, UpcomingInstallmentOut
@@ -22,10 +22,11 @@ MIN_INSTALLMENTS_FOR_BEST_PAYER = 1
 @router.get("", response_model=DashboardOut)
 def get_dashboard(
     company_id: int | None = Query(default=None),
-    user: User = Depends(require_roles(UserRole.administrador, UserRole.gestor)),
+    user: User = Depends(require_roles(UserRole.administrador, UserRole.gestor, UserRole.consultor)),
     db: Session = Depends(get_db),
 ):
-    scope_company_id = user.company_id if user.role == UserRole.gestor else company_id
+    require_consultant_permission(db, user, "view_dashboard")
+    scope_company_id = user.company_id if user.role != UserRole.administrador else company_id
 
     loan_query = db.query(Loan)
     if scope_company_id is not None:

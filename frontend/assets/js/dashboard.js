@@ -1,6 +1,10 @@
 (async function () {
-  const user = requireAuth(["administrador", "gestor"]);
+  const user = requireAuth(["administrador", "gestor", "consultor"]);
   if (!user) return;
+  if (user.role === "consultor" && !consultorPerm(user, "view_dashboard")) {
+    window.location.href = "/clientes.html";
+    return;
+  }
   renderShell("dashboard.html");
 
   let companyFilter = "";
@@ -63,11 +67,17 @@
     document.getElementById("cardInterestProfit").href = relatoriosLink;
     document.getElementById("cardLateFeeProfit").href = relatoriosLink;
 
+    const in3Days = new Date();
+    in3Days.setHours(0, 0, 0, 0);
+    in3Days.setDate(in3Days.getDate() + 3);
+    const upcoming3d = data.upcoming_installments.filter((i) => new Date(i.due_date + "T00:00:00") <= in3Days);
+
     const in5Days = new Date();
     in5Days.setHours(0, 0, 0, 0);
     in5Days.setDate(in5Days.getDate() + 5);
     const upcoming5d = data.upcoming_installments.filter((i) => new Date(i.due_date + "T00:00:00") <= in5Days);
 
+    renderUpcomingTable("upcoming3Body", upcoming3d, "Nenhum vencimento nos próximos 3 dias 🎉");
     renderUpcomingTable("upcoming5Body", upcoming5d, "Nenhum vencimento nos próximos 5 dias 🎉");
     renderUpcomingTable("upcomingBody", data.upcoming_installments, "Nenhum vencimento nos próximos 15 dias");
 
@@ -130,9 +140,12 @@
       const inst = installments.find((i) => String(i.installment_id) === btn.dataset.installmentId);
       btn.addEventListener("click", () => {
         const message = buildDueSoonMessage(inst.client_name, inst.due_date, inst.amount);
-        if (!openWhatsApp(inst.client_phone, message)) {
-          alert("Telefone do cliente inválido ou não cadastrado.");
-        }
+        openWhatsAppComposer(inst.client_phone, message, {
+          cliente: inst.client_name,
+          valor: formatMoney(inst.amount),
+          vencimento: formatDate(inst.due_date),
+          emprestimo: inst.loan_number,
+        });
       });
     });
   }

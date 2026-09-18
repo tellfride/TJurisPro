@@ -7,9 +7,9 @@ from openpyxl import Workbook, load_workbook
 from openpyxl.styles import Font
 from sqlalchemy.orm import Session
 
-from ..auth import require_roles
+from ..auth import require_consultant_permission, require_roles
 from ..database import get_db
-from ..models import Client, Loan, User, UserRole
+from ..models import Client, Company, Loan, User, UserRole
 from ..services.cpf_validator import validate_cpf as _validate_cpf
 from ..services.audit_logger import log_action
 from ..services.interest_engine import calculate_total_amount, generate_installments, next_loan_number
@@ -44,12 +44,13 @@ TEMPLATE_HEADERS = [
     COL_REF1_NAME, COL_REF1_PHONE, COL_REF2_NAME, COL_REF2_PHONE, COL_REF3_NAME, COL_REF3_PHONE,
     COL_PRINCIPAL, COL_RATE, COL_TERM, COL_LATE_FEE, COL_START_DATE, COL_NOTES,
 ]
-REQUIRED_HEADERS = [COL_NAME, COL_DOCUMENT, COL_PRINCIPAL, COL_RATE, COL_TERM, COL_LATE_FEE]
+REQUIRED_HEADERS = [COL_NAME, COL_DOCUMENT]
+LOAN_HEADERS = [COL_PRINCIPAL, COL_RATE, COL_TERM, COL_LATE_FEE]
 
 
 @router.get("/clients-loans/template.xlsx")
 def download_template(
-    user: User = Depends(require_roles(UserRole.gestor, UserRole.operador)),
+    user: User = Depends(require_roles(UserRole.gestor, UserRole.consultor)),
 ):
     wb = Workbook()
     ws = wb.active
@@ -72,8 +73,11 @@ def download_template(
     instructions["A1"].font = Font(bold=True, size=13)
     lines = [
         "",
-        "Uma linha = um cliente + um empréstimo lançado para ele.",
-        "Colunas obrigatórias: " + ", ".join(REQUIRED_HEADERS) + ".",
+        "Uma linha = um cliente (+ opcionalmente um empréstimo lançado para ele).",
+        "Colunas obrigatórias para o cliente: " + f"{COL_NAME}, {COL_DOCUMENT}" + ".",
+        "Para lançar um empréstimo junto, preencha TODAS as colunas de empréstimo (" +
+        f"{COL_PRINCIPAL}, {COL_RATE}, {COL_TERM}, {COL_LATE_FEE}" +
+        "). Para importar só o cliente (sem empréstimo), deixe essas 4 colunas em branco.",
         "Se o nome do cliente já existir cadastrado na sua empresa, o cliente é reaproveitado",
         "(não duplica) e só um novo empréstimo é lançado para ele — nesse caso o CPF da linha é ignorado.",
         "CPF deve ter 11 dígitos (com ou sem pontuação). As 3 referências são opcionais.",
@@ -135,9 +139,11 @@ def _parse_start_date(value, row_number: int) -> date:
 @router.post("/clients-loans")
 async def import_clients_loans(
     file: UploadFile = File(...),
-    user: User = Depends(require_roles(UserRole.gestor, UserRole.operador)),
+    user: User = Depends(require_roles(UserRole.gestor, UserRole.consultor)),
     db: Session = Depends(get_db),
 ):
+    require_consultant_permission(db, user, "register_clients")
+    require_consultant_permission(db, user, "register_loans")
     if not file.filename.lower().endswith((".xlsx", ".xlsm")):
         raise HTTPException(status_code=422, detail="Envie um arquivo .xlsx")
 
@@ -166,6 +172,10 @@ async def import_clients_loans(
     loans_created = 0
     next_number = next_loan_number(db, user.company_id)
 
+    company = db.get(Company, user.company_id)
+    max_clients = company.max_clients if company else None
+    client_count = db.query(Client).filter(Client.company_id == user.company_id).count()
+
     existing_clients = {
         c.name.strip().lower(): c
         for c in db.query(Client).filter(Client.company_id == user.company_id).all()
@@ -179,22 +189,39 @@ async def import_clients_loans(
             name = _clean(cell(row, COL_NAME))
             if not name:
                 raise ValueError(f"Linha {row_number}: '{COL_NAME}' é obrigatório")
-            principal = _parse_decimal(cell(row, COL_PRINCIPAL), COL_PRINCIPAL, row_number)
-            rate = _parse_decimal(cell(row, COL_RATE), COL_RATE, row_number)
-            term_months = _parse_int(cell(row, COL_TERM), COL_TERM, row_number)
-            late_fee = _parse_decimal(cell(row, COL_LATE_FEE), COL_LATE_FEE, row_number)
-            start_date = _parse_start_date(cell(row, COL_START_DATE), row_number)
-            if principal <= 0:
-                raise ValueError(f"Linha {row_number}: '{COL_PRINCIPAL}' deve ser maior que zero")
-            if term_months <= 0:
-                raise ValueError(f"Linha {row_number}: '{COL_TERM}' deve ser maior que zero")
-            if rate < 0:
-                raise ValueError(f"Linha {row_number}: '{COL_RATE}' não pode ser negativa")
-            if late_fee < 0:
-                raise ValueError(f"Linha {row_number}: '{COL_LATE_FEE}' não pode ser negativa")
+
+            loan_values = {h: cell(row, h) for h in LOAN_HEADERS}
+            loan_filled = [h for h, v in loan_values.items() if v not in (None, "")]
+            wants_loan = len(loan_filled) > 0
+            if wants_loan and len(loan_filled) < len(LOAN_HEADERS):
+                missing = [h for h in LOAN_HEADERS if h not in loan_filled]
+                raise ValueError(
+                    f"Linha {row_number}: preencha todas as colunas de empréstimo ({', '.join(missing)}) "
+                    "ou deixe as 4 em branco para importar só o cliente"
+                )
+
+            if wants_loan:
+                principal = _parse_decimal(loan_values[COL_PRINCIPAL], COL_PRINCIPAL, row_number)
+                rate = _parse_decimal(loan_values[COL_RATE], COL_RATE, row_number)
+                term_months = _parse_int(loan_values[COL_TERM], COL_TERM, row_number)
+                late_fee = _parse_decimal(loan_values[COL_LATE_FEE], COL_LATE_FEE, row_number)
+                start_date = _parse_start_date(cell(row, COL_START_DATE), row_number)
+                if principal <= 0:
+                    raise ValueError(f"Linha {row_number}: '{COL_PRINCIPAL}' deve ser maior que zero")
+                if term_months <= 0:
+                    raise ValueError(f"Linha {row_number}: '{COL_TERM}' deve ser maior que zero")
+                if rate < 0:
+                    raise ValueError(f"Linha {row_number}: '{COL_RATE}' não pode ser negativa")
+                if late_fee < 0:
+                    raise ValueError(f"Linha {row_number}: '{COL_LATE_FEE}' não pode ser negativa")
 
             client = existing_clients.get(name.lower())
             if client is None:
+                if max_clients is not None and client_count >= max_clients:
+                    raise ValueError(
+                        f"Linha {row_number}: limite de {max_clients} clientes da empresa atingido — "
+                        "cliente não importado"
+                    )
                 raw_document = _clean(cell(row, COL_DOCUMENT))
                 if not raw_document:
                     raise ValueError(f"Linha {row_number}: '{COL_DOCUMENT}' é obrigatório para cliente novo")
@@ -223,28 +250,30 @@ async def import_clients_loans(
                 db.add(client)
                 db.flush()
                 existing_clients[name.lower()] = client
+                client_count += 1
                 clients_created += 1
 
-            total_amount = calculate_total_amount(principal, rate)
-            loan = Loan(
-                company_id=user.company_id,
-                loan_number=next_number,
-                client_id=client.id,
-                principal=principal,
-                interest_rate=rate,
-                term_months=term_months,
-                start_date=start_date,
-                late_fee_per_day=late_fee,
-                total_amount=total_amount,
-                created_by=user.id,
-            )
-            db.add(loan)
-            db.flush()
-            for installment in generate_installments(loan):
-                installment.loan_id = loan.id
-                db.add(installment)
-            loans_created += 1
-            next_number += 1
+            if wants_loan:
+                total_amount = calculate_total_amount(principal, rate)
+                loan = Loan(
+                    company_id=user.company_id,
+                    loan_number=next_number,
+                    client_id=client.id,
+                    principal=principal,
+                    interest_rate=rate,
+                    term_months=term_months,
+                    start_date=start_date,
+                    late_fee_per_day=late_fee,
+                    total_amount=total_amount,
+                    created_by=user.id,
+                )
+                db.add(loan)
+                db.flush()
+                for installment in generate_installments(loan):
+                    installment.loan_id = loan.id
+                    db.add(installment)
+                loans_created += 1
+                next_number += 1
             savepoint.commit()
         except ValueError as exc:
             savepoint.rollback()

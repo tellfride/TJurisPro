@@ -22,7 +22,7 @@
             </div>
             <div class="table-wrap">
               <table>
-                <thead><tr><th>Nome</th><th>Status</th><th></th></tr></thead>
+                <thead><tr><th>Nome</th><th>Status</th><th>Licença</th><th>Limite clientes</th><th></th></tr></thead>
                 <tbody id="companiesBody"></tbody>
               </table>
             </div>
@@ -41,6 +41,7 @@
                 <thead><tr><th>Nome</th><th>Email</th><th>Papel</th><th>Status</th><th></th></tr></thead>
                 <tbody id="usersBody"></tbody>
               </table>
+              <p class="hint" style="padding:0 1rem 0.75rem;">Use a aba <strong>Particionamento</strong> (login de um gestor) para os consultores do dia a dia — aqui é pra ajustes administrativos gerais.</p>
             </div>
           </div>
         </div>
@@ -60,6 +61,18 @@
           <label for="companyName">Nome da empresa *</label>
           <input type="text" id="companyName" required />
         </div>
+        <div class="field-row">
+          <div class="field">
+            <label for="companyLicenseExpires">Licença válida até</label>
+            <input type="date" id="companyLicenseExpires" />
+          </div>
+          <div class="field">
+            <label for="companyMaxClients">Limite de clientes</label>
+            <input type="number" id="companyMaxClients" min="1" placeholder="Sem limite" />
+          </div>
+        </div>
+        <p class="hint">Deixe os dois em branco para licença/limite ilimitados. A empresa é avisada no
+          sistema e via Telegram quando a licença estiver a 7 dias (ou menos) do vencimento.</p>
         <div class="form-actions">
           <button type="button" class="btn btn-outline" id="cancelCompanyModal">Cancelar</button>
           <button type="submit" class="btn btn-primary">Salvar</button>
@@ -80,7 +93,7 @@
           <label for="userRole">Papel *</label>
           <select id="userRole">
             <option value="gestor">Gestor</option>
-            <option value="operador">Operador</option>
+            <option value="consultor">Consultor</option>
             <option value="administrador">Administrador</option>
           </select>
         </div>

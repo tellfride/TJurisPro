@@ -1,9 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
-from ..auth import assert_company_access, get_current_user, require_roles
+from ..auth import assert_company_access, get_current_user, require_consultant_permission, require_roles
 from ..database import get_db
-from ..models import Client, User, UserRole
+from ..models import Client, Company, User, UserRole
 from ..schemas import ClientCreate, ClientOut, ClientUpdate
 from ..services.audit_logger import log_action
 from ..services.telegram import notify_company
@@ -45,11 +45,25 @@ def get_client(client_id: int, user: User = Depends(get_current_user), db: Sessi
 @router.post("", response_model=ClientOut, status_code=status.HTTP_201_CREATED)
 def create_client(
     payload: ClientCreate,
-    user: User = Depends(require_roles(UserRole.administrador, UserRole.gestor, UserRole.operador)),
+    user: User = Depends(require_roles(UserRole.administrador, UserRole.gestor, UserRole.consultor)),
     db: Session = Depends(get_db),
 ):
     if user.role == UserRole.administrador:
-        raise HTTPException(status_code=422, detail="Administrador não pertence a uma empresa; use o login de um gestor/operador para cadastrar clientes")
+        raise HTTPException(status_code=422, detail="Administrador não pertence a uma empresa; use o login de um gestor/consultor para cadastrar clientes")
+    require_consultant_permission(db, user, "register_clients")
+
+    company = db.get(Company, user.company_id)
+    if company and company.max_clients is not None:
+        current_count = db.query(Client).filter(Client.company_id == user.company_id).count()
+        if current_count >= company.max_clients:
+            raise HTTPException(
+                status_code=422,
+                detail=(
+                    f"Limite de {company.max_clients} clientes cadastrados atingido para esta empresa. "
+                    "Fale com o administrador do sistema para aumentar o limite do plano."
+                ),
+            )
+
     client = Client(company_id=user.company_id, created_by=user.id, **payload.model_dump())
     db.add(client)
     db.flush()
