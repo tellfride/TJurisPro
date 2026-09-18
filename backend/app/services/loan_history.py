@@ -78,7 +78,9 @@ def build_loan_history(db: Session, loan: Loan) -> list[dict]:
     if user_ids:
         names = {u.id: u.name for u in db.query(User).filter(User.id.in_(user_ids)).all()}
 
-    events.sort(key=lambda e: e["at"], reverse=True)  # mais recente primeiro
+    # Mais recente primeiro. A data do banco tem precisão de segundo; no empate a
+    # abertura fica por último (é sempre o evento mais antigo da OS).
+    events.sort(key=lambda e: (e["at"], e["kind"] != "aberta"), reverse=True)
     return [
         {"at": e["at"], "kind": e["kind"], "user_name": names.get(e["user_id"]), "data": e["data"]}
         for e in events

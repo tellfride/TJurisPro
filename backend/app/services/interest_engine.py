@@ -36,9 +36,22 @@ def next_loan_number(db: Session, company_id: int) -> int:
 
     Trava a linha da empresa até o fim da transação: sem isso, dois lançamentos
     simultâneos liam o mesmo "maior número" e um deles falhava (erro 500) na
-    restrição única (empresa, número) — uma OS perdida."""
+    restrição única (empresa, número) — uma OS perdida.
+
+    O último número é lido com leitura BLOQUEANTE (FOR UPDATE) de propósito: o
+    banco roda em REPEATABLE READ e a sessão já tem um "retrato" tirado antes
+    (ex.: ao checar o usuário). Um MAX() comum leria esse retrato antigo mesmo
+    depois de a outra transação confirmar — e devolveria o mesmo número. A leitura
+    bloqueante enxerga o dado confirmado mais recente."""
     db.query(Company.id).filter(Company.id == company_id).with_for_update().first()
-    last_number = db.query(func.max(Loan.loan_number)).filter(Loan.company_id == company_id).scalar()
+    last_number = (
+        db.query(Loan.loan_number)
+        .filter(Loan.company_id == company_id)
+        .order_by(Loan.loan_number.desc())
+        .limit(1)
+        .with_for_update()
+        .scalar()
+    )
     return (last_number or 0) + 1
 
 
