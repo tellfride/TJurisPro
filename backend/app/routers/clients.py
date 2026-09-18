@@ -6,7 +6,7 @@ from ..database import get_db
 from ..models import Client, Company, User, UserRole
 from ..schemas import ClientCreate, ClientOut, ClientUpdate
 from ..services.audit_logger import log_action
-from ..services.telegram import notify_company
+from ..services.telegram import esc, notify_company
 
 router = APIRouter(prefix="/api/clients", tags=["clients"])
 
@@ -23,13 +23,16 @@ def _scope_query(query, user: User, company_id: int | None):
 @router.get("", response_model=list[ClientOut])
 def list_clients(
     company_id: int | None = Query(default=None),
-    search: str | None = Query(default=None),
+    search: str | None = Query(default=None, max_length=100),
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     query = _scope_query(db.query(Client), user, company_id)
     if search:
-        query = query.filter(Client.name.ilike(f"%{search}%"))
+        # "%" e "_" digitados na busca são curingas do LIKE: "%" listaria todos os
+        # clientes e "_" casaria qualquer letra. Escapa para buscar o texto literal.
+        literal = search.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+        query = query.filter(Client.name.ilike(f"%{literal}%", escape="\\"))
     return query.order_by(Client.name).all()
 
 
@@ -72,7 +75,7 @@ def create_client(
     db.refresh(client)
     notify_company(
         db, user.company_id,
-        f"👤 <b>Novo cliente cadastrado</b>\nNome: {client.name}\nCadastrado por: {user.name}",
+        f"👤 <b>Novo cliente cadastrado</b>\nNome: {esc(client.name)}\nCadastrado por: {esc(user.name)}",
     )
     return client
 

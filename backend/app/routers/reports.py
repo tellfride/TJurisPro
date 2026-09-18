@@ -13,6 +13,24 @@ from ..services.analytics import profit_split
 
 router = APIRouter(prefix="/api/reports", tags=["reports"])
 
+# Texto que o Excel/LibreOffice trata como fórmula ou comando quando é o começo da célula.
+_FORMULA_PREFIXES = ("=", "+", "-", "@", "\t", "\r")
+
+
+def _append_row_safe(ws, row: list) -> None:
+    """ws.append() que nunca deixa texto digitado por usuário virar fórmula.
+
+    O openpyxl grava como FÓRMULA qualquer texto que comece com "=". Como nomes de
+    cliente/empresa e observações vêm de digitação (ou de planilha importada), um
+    cliente chamado `=HYPERLINK("http://golpe","Clique")` viraria um link/fórmula
+    executado na máquina de quem abre o relatório. Aqui a célula é forçada a texto
+    e marcada com quotePrefix (o Excel mostra o conteúdo literalmente)."""
+    ws.append(row)
+    for cell in ws[ws.max_row]:
+        if isinstance(cell.value, str) and cell.value.startswith(_FORMULA_PREFIXES):
+            cell.data_type = "s"
+            cell.quotePrefix = True
+
 HEADER_FONT = Font(bold=True)
 COLUMNS = [
     "Data do Pagamento", "Empresa", "Cliente", "Empréstimo Nº", "Parcela #", "Tipo",
@@ -61,7 +79,7 @@ def export_transactions(
         interest_profit, late_fee_profit = profit_split(payment, loan)
         tipo = "Quitação antecipada" if payment.installment_id is None else "Pagamento de parcela"
         registrado_por = payment.registered_by_user.name if payment.registered_by_user else "-"
-        ws.append([
+        _append_row_safe(ws, [
             payment.payment_date.strftime("%d/%m/%Y"),
             loan.company.name,
             loan.client.name,

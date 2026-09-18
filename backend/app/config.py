@@ -24,9 +24,16 @@ class Settings:
 
     cors_origins: list[str] = [o.strip() for o in _env("CORS_ORIGINS", "").split(",") if o.strip()]
 
+    # /docs, /redoc e /openapi.json listam todas as rotas e campos da API — úteis em
+    # desenvolvimento, mas em produção só ajudam quem está mapeando o sistema.
+    enable_docs: bool = _env("ENABLE_DOCS", "").lower() in ("1", "true", "yes")
+
     mysqldump_path: str = _env("MYSQLDUMP_PATH", "mysqldump")
     backup_dir: str = _env("BACKUP_DIR", "../backups")
     backup_retention_days: int = int(_env("BACKUP_RETENTION_DAYS", "30"))
+
+    # Importação de planilha: cada linha vira cliente + empréstimo + até 120 parcelas.
+    import_max_rows: int = int(_env("IMPORT_MAX_ROWS", "1000"))
 
     admin_name: str = _env("ADMIN_NAME", "Administrador")
     admin_email: str = _env("ADMIN_EMAIL", "admin@jurispro.local")
@@ -42,8 +49,8 @@ class Settings:
 
 settings = Settings()
 
-if settings.jwt_secret in ("", "change-me"):
+if settings.jwt_secret in ("", "change-me") or len(settings.jwt_secret) < 32:
     raise RuntimeError(
-        "JWT_SECRET não definido (ou deixado no valor padrão 'change-me') em backend/.env. "
-        "Gere um valor forte, ex.: openssl rand -hex 32"
+        "JWT_SECRET não definido, no valor padrão 'change-me' ou com menos de 32 caracteres "
+        "em backend/.env. Gere um valor forte, ex.: openssl rand -hex 32"
     )

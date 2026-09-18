@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from ..auth import assert_company_access, require_roles
 from ..database import get_db
 from ..models import Company, CompanyNotificationSettings, User, UserRole
-from ..schemas import NotificationSettingsOut, NotificationSettingsUpdate
+from ..schemas import SECRET_MASK, NotificationSettingsOut, NotificationSettingsUpdate
 from ..services.audit_logger import log_action
 
 router = APIRouter(prefix="/api/settings", tags=["settings"])
@@ -55,6 +55,11 @@ def update_notification_settings(
         db.add(row)
 
     changes = payload.model_dump(exclude_unset=True)
+    # A tela recebe o token mascarado (••••1234). Se ele voltar igual, o usuário não
+    # mexeu no campo: mantém o token real em vez de gravar a máscara por cima.
+    token = changes.get("telegram_bot_token")
+    if token and token.startswith(SECRET_MASK):
+        del changes["telegram_bot_token"]
     for field, value in changes.items():
         setattr(row, field, value)
 

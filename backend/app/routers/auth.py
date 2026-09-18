@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta
 from math import ceil
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from sqlalchemy.orm import Session
 
 from ..auth import (
@@ -105,6 +105,17 @@ def login(payload: LoginRequest, request: Request, db: Session = Depends(get_db)
     if user.role == UserRole.consultor:
         user_out.permissions = permissions_dict(db, user)
     return TokenResponse(access_token=token, user=user_out)
+
+
+@router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
+def logout(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Encerra a sessão no servidor. O token (JWT) só vale enquanto o session_token
+    dele for igual ao do banco; apagá-lo aqui invalida o token mesmo que alguém
+    tenha uma cópia dele — antes, "Sair" só apagava o token do navegador e a cópia
+    continuava válida até expirar (8 h)."""
+    user.session_token = None
+    db.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.get("/me", response_model=UserOut)

@@ -1,3 +1,4 @@
+import html
 import logging
 
 import requests
@@ -9,6 +10,14 @@ logger = logging.getLogger("jurispro.telegram")
 
 TELEGRAM_API = "https://api.telegram.org/bot{token}/sendMessage"
 TIMEOUT_SECONDS = 10
+
+
+def esc(value) -> str:
+    """Escapa texto vindo do usuário (nome de cliente, de empresa...) antes de
+    colocá-lo numa mensagem com parse_mode HTML. Sem isso, um cliente cadastrado
+    como `<a href="http://golpe">clique</a>` vira link clicável dentro do grupo do
+    Telegram da empresa — e um `<` solto faz o Telegram recusar a mensagem inteira."""
+    return html.escape(str(value), quote=False)
 
 
 def send_message(bot_token: str, chat_id: str, text: str) -> bool:
@@ -23,7 +32,9 @@ def send_message(bot_token: str, chat_id: str, text: str) -> bool:
             return False
         return True
     except requests.RequestException as exc:
-        logger.warning("Erro de rede ao enviar mensagem Telegram: %s", exc)
+        # Não logar `exc`: a mensagem do requests traz a URL completa, que contém
+        # o token do bot (/bot<TOKEN>/sendMessage).
+        logger.warning("Erro de rede ao enviar mensagem Telegram (%s)", type(exc).__name__)
         return False
 
 

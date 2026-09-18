@@ -31,7 +31,7 @@ from ..services.interest_engine import (
     refresh_loan_status,
     suggest_early_payoff,
 )
-from ..services.telegram import notify_company
+from ..services.telegram import esc, notify_company
 
 router = APIRouter(prefix="/api/loans", tags=["loans"])
 
@@ -200,11 +200,11 @@ def create_loan(
         db, user.company_id,
         (
             f"💰 <b>Nova OS lançada: {format_os_number(loan.loan_number)}</b>\n"
-            f"Cliente: {client.name}\n"
+            f"Cliente: {esc(client.name)}\n"
             f"Valor solicitado: R$ {principal:.2f}\n"
             f"Juros: {rate:.2f}%\n"
             f"Total a pagar: R$ {total:.2f} em {loan.term_months}x\n"
-            f"Lançado por: {user.name}"
+            f"Lançado por: {esc(user.name)}"
         ),
     )
     return _get_loan_or_404(db, loan.id)

@@ -1,8 +1,11 @@
 import logging
+from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from .config import settings as app_settings
@@ -12,7 +15,32 @@ from .services.scheduler import start_scheduler
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 
-app = FastAPI(title="JurisPRO", version="1.0.0")
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    Base.metadata.create_all(bind=engine)
+    start_scheduler()
+    logging.getLogger("jurispro").info("JurisPRO iniciado")
+    yield
+
+
+# Documentação interativa só com ENABLE_DOCS=true (desenvolvimento).
+_docs = {} if app_settings.enable_docs else {"docs_url": None, "redoc_url": None, "openapi_url": None}
+app = FastAPI(title="JurisPRO", version="1.0.0", lifespan=lifespan, **_docs)
+
+
+@app.exception_handler(RequestValidationError)
+async def validation_error_handler(_request: Request, exc: RequestValidationError):
+    """O erro 422 padrão devolve, para cada campo, o valor que foi enviado
+    ("input") e o padrão da validação ("ctx"). Numa tentativa de login isso
+    ecoaria a senha digitada e, em qualquer rota, expõe regras internas. Devolve
+    só onde está o erro e qual é."""
+    errors = [
+        {"loc": list(err.get("loc", ())), "msg": err.get("msg", "Valor inválido"), "type": err.get("type", "value_error")}
+        for err in exc.errors()
+    ]
+    return JSONResponse(status_code=422, content={"detail": errors})
+
 
 # Frontend e API são servidos pela mesma origem (StaticFiles montado abaixo),
 # então CORS não é necessário para o uso normal do sistema. allow_origins vazio
@@ -39,13 +67,6 @@ app.include_router(imports.router)
 app.include_router(whatsapp_templates.router)
 
 FRONTEND_DIR = Path(__file__).resolve().parent.parent.parent / "frontend"
-
-
-@app.on_event("startup")
-def on_startup() -> None:
-    Base.metadata.create_all(bind=engine)
-    start_scheduler()
-    logging.getLogger("jurispro").info("JurisPRO iniciado")
 
 
 if FRONTEND_DIR.exists():

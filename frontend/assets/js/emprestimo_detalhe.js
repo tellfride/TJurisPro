@@ -3,6 +3,15 @@
   if (!user) return;
   renderShell("emprestimos.html");
 
+  // "Voltar" retorna à tela anterior; sem histórico (aba aberta direto), o href leva à lista.
+  // (Era href="javascript:history.back()", que um CSP estrito bloqueia.)
+  document.getElementById("backLink").addEventListener("click", (ev) => {
+    if (window.history.length > 1) {
+      ev.preventDefault();
+      window.history.back();
+    }
+  });
+
   const isAdminOrGestor = user.role === "administrador" || user.role === "gestor";
   const canEditRate = isAdminOrGestor || (user.role === "consultor" && consultorPerm(user, "edit_rates"));
   const canSettle = isAdminOrGestor || (user.role === "consultor" && consultorPerm(user, "settle_loans"));

@@ -1,6 +1,7 @@
 # segredos / configuração local — nunca commitar
 backend/.env
 .env
+app.env
 /data/
 
 # ambiente virtual Python

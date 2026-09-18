@@ -66,7 +66,13 @@ function requireAuth(allowedRoles) {
   return user;
 }
 
-function logout() {
+async function logout() {
+  // Invalida a sessão também no servidor: só apagar o token do navegador deixaria
+  // uma cópia dele (ex.: roubada) válida até expirar. Se a chamada falhar (rede),
+  // sai do mesmo jeito localmente.
+  try {
+    await api.post("/auth/logout", {});
+  } catch (e) {}
   clearSession();
   window.location.href = "/index.html";
 }

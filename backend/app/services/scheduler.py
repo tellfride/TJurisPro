@@ -69,7 +69,7 @@ def notify_job() -> None:
                 client_name = inst.loan.client.name
                 text = (
                     f"⏰ <b>Vencimento próximo</b>\n"
-                    f"Cliente: {client_name}\n"
+                    f"Cliente: {telegram_service.esc(client_name)}\n"
                     f"Parcela {inst.number} do empréstimo #{inst.loan_id}\n"
                     f"Valor: R$ {inst.base_amount:.2f}\n"
                     f"Vencimento: {inst.due_date.strftime('%d/%m/%Y')}"
@@ -114,7 +114,7 @@ def due_soon_list_job() -> None:
             if not due_soon:
                 continue
 
-            lines = [f"📋 <b>Vencimentos nos próximos {DUE_SOON_LIST_DAYS} dias</b> ({company.name})"]
+            lines = [f"📋 <b>Vencimentos nos próximos {DUE_SOON_LIST_DAYS} dias</b> ({telegram_service.esc(company.name)})"]
             total = Decimal("0")
             for inst in due_soon:
                 remaining = (
@@ -124,7 +124,7 @@ def due_soon_list_job() -> None:
                 )
                 total += remaining
                 lines.append(
-                    f"• {inst.loan.client.name} — parcela {inst.number} — "
+                    f"• {telegram_service.esc(inst.loan.client.name)} — parcela {inst.number} — "
                     f"R$ {remaining:.2f} — vence {inst.due_date.strftime('%d/%m/%Y')}"
                 )
             lines.append(f"\nTotal a vencer: R$ {total:.2f}")
@@ -161,7 +161,7 @@ def license_expiry_job() -> None:
                 continue
             if expires_date < today:
                 text = (
-                    f"🔒 <b>Licença expirada</b> ({company.name})\n"
+                    f"🔒 <b>Licença expirada</b> ({telegram_service.esc(company.name)})\n"
                     f"Sua licença venceu em {expires_date.strftime('%d/%m/%Y')}.\n"
                     "Novos logins de gestores/consultores ficarão bloqueados. "
                     "Entre em contato com o administrador do sistema para renovar o plano."
@@ -169,7 +169,7 @@ def license_expiry_job() -> None:
             else:
                 days_left = (expires_date - today).days
                 text = (
-                    f"⚠️ <b>Licença vencendo</b> ({company.name})\n"
+                    f"⚠️ <b>Licença vencendo</b> ({telegram_service.esc(company.name)})\n"
                     f"Sua licença vence em {expires_date.strftime('%d/%m/%Y')} "
                     f"({days_left} dia(s)).\n"
                     "Entre em contato com o administrador do sistema para renovar o plano."

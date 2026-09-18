@@ -1,7 +1,8 @@
+import re
 from datetime import date, datetime
 from typing import Annotated, Any, Optional
 
-from pydantic import AfterValidator, BaseModel, Field
+from pydantic import AfterValidator, BaseModel, Field, field_validator
 
 from .models import InstallmentStatus, LoanStatus, UserRole
 from .services.cpf_validator import validate_cpf as _validate_cpf
@@ -11,11 +12,33 @@ from .services.cpf_validator import validate_cpf as _validate_cpf
 # etc.) — comuns em redes internas de empresas — então validamos só o formato.
 EmailField = Annotated[str, Field(pattern=r"^[^@\s]+@[^@\s]+\.[^@\s]+$", max_length=150)]
 
+# Senhas: mínimo 8 (só vale ao CRIAR/TROCAR — quem já tem senha de 6 continua entrando)
+# e máximo 128, para o login não aceitar corpo gigante nem gastar CPU à toa.
+PASSWORD_MIN = 8
+PASSWORD_MAX = 128
+
+# Valores monetários/taxas com teto compatível com as colunas Numeric do banco
+# (Numeric(12,2) aceita até 9.999.999.999,99): sem teto, "1e30" ou "Infinity"
+# passavam na validação e estouravam no banco como erro 500.
+MAX_PRINCIPAL = 100_000_000
+MAX_INTEREST_RATE = 1000          # %, Numeric(6,2); total = principal * (1 + taxa/100) <= 1,1 bi
+MAX_LATE_FEE_PER_DAY = 100_000    # R$/dia, Numeric(10,2)
+MAX_PAYMENT = 1_000_000_000
+
+# Máscara mostrada no lugar do token do bot do Telegram (o valor real nunca sai do servidor).
+SECRET_MASK = "•"
+
+
+def mask_secret(value: Optional[str]) -> Optional[str]:
+    if not value:
+        return None
+    return SECRET_MASK * 8 + value[-4:]
+
 
 # ---------- Auth ----------
 class LoginRequest(BaseModel):
     email: EmailField
-    password: str
+    password: str = Field(max_length=PASSWORD_MAX)
 
 
 class UserOut(BaseModel):
@@ -41,14 +64,14 @@ class TokenResponse(BaseModel):
 class CompanyCreate(BaseModel):
     name: str = Field(min_length=2, max_length=150)
     license_expires_at: Optional[datetime] = None
-    max_clients: Optional[int] = Field(default=None, ge=1)
+    max_clients: Optional[int] = Field(default=None, ge=1, le=1_000_000)
 
 
 class CompanyUpdate(BaseModel):
     name: Optional[str] = Field(default=None, min_length=2, max_length=150)
     active: Optional[bool] = None
     license_expires_at: Optional[datetime] = None
-    max_clients: Optional[int] = Field(default=None, ge=1)
+    max_clients: Optional[int] = Field(default=None, ge=1, le=1_000_000)
 
 
 class CompanyOut(BaseModel):
@@ -74,14 +97,14 @@ class UserCreate(BaseModel):
     company_id: Optional[int] = None
     name: str = Field(min_length=2, max_length=150)
     email: EmailField
-    password: str = Field(min_length=6)
+    password: str = Field(min_length=PASSWORD_MIN, max_length=PASSWORD_MAX)
     role: UserRole
 
 
 class UserUpdate(BaseModel):
-    name: Optional[str] = None
+    name: Optional[str] = Field(default=None, min_length=2, max_length=150)
     active: Optional[bool] = None
-    password: Optional[str] = Field(default=None, min_length=6)
+    password: Optional[str] = Field(default=None, min_length=PASSWORD_MIN, max_length=PASSWORD_MAX)
 
 
 # ---------- Client ----------
@@ -92,35 +115,35 @@ CpfOptional = Annotated[Optional[str], AfterValidator(lambda v: _validate_cpf(v)
 class ClientCreate(BaseModel):
     name: str = Field(min_length=2, max_length=150)
     document: CpfRequired = Field(description="CPF do solicitante")
-    phone: Optional[str] = None
-    email: Optional[str] = None
-    cep: Optional[str] = None
-    address: Optional[str] = None
-    address_number: Optional[str] = None
-    notes: Optional[str] = None
-    reference1_name: Optional[str] = None
-    reference1_phone: Optional[str] = None
-    reference2_name: Optional[str] = None
-    reference2_phone: Optional[str] = None
-    reference3_name: Optional[str] = None
-    reference3_phone: Optional[str] = None
+    phone: Optional[str] = Field(default=None, max_length=30)
+    email: Optional[str] = Field(default=None, max_length=150)
+    cep: Optional[str] = Field(default=None, max_length=10)
+    address: Optional[str] = Field(default=None, max_length=255)
+    address_number: Optional[str] = Field(default=None, max_length=20)
+    notes: Optional[str] = Field(default=None, max_length=5000)
+    reference1_name: Optional[str] = Field(default=None, max_length=150)
+    reference1_phone: Optional[str] = Field(default=None, max_length=30)
+    reference2_name: Optional[str] = Field(default=None, max_length=150)
+    reference2_phone: Optional[str] = Field(default=None, max_length=30)
+    reference3_name: Optional[str] = Field(default=None, max_length=150)
+    reference3_phone: Optional[str] = Field(default=None, max_length=30)
 
 
 class ClientUpdate(BaseModel):
-    name: Optional[str] = None
+    name: Optional[str] = Field(default=None, min_length=2, max_length=150)
     document: CpfOptional = None
-    phone: Optional[str] = None
-    email: Optional[str] = None
-    cep: Optional[str] = None
-    address: Optional[str] = None
-    address_number: Optional[str] = None
-    notes: Optional[str] = None
-    reference1_name: Optional[str] = None
-    reference1_phone: Optional[str] = None
-    reference2_name: Optional[str] = None
-    reference2_phone: Optional[str] = None
-    reference3_name: Optional[str] = None
-    reference3_phone: Optional[str] = None
+    phone: Optional[str] = Field(default=None, max_length=30)
+    email: Optional[str] = Field(default=None, max_length=150)
+    cep: Optional[str] = Field(default=None, max_length=10)
+    address: Optional[str] = Field(default=None, max_length=255)
+    address_number: Optional[str] = Field(default=None, max_length=20)
+    notes: Optional[str] = Field(default=None, max_length=5000)
+    reference1_name: Optional[str] = Field(default=None, max_length=150)
+    reference1_phone: Optional[str] = Field(default=None, max_length=30)
+    reference2_name: Optional[str] = Field(default=None, max_length=150)
+    reference2_phone: Optional[str] = Field(default=None, max_length=30)
+    reference3_name: Optional[str] = Field(default=None, max_length=150)
+    reference3_phone: Optional[str] = Field(default=None, max_length=30)
 
 
 class ClientOut(BaseModel):
@@ -164,9 +187,9 @@ class InstallmentOut(BaseModel):
 
 class PaymentCreate(BaseModel):
     installment_id: int
-    amount: float = Field(gt=0)
+    amount: float = Field(gt=0, le=MAX_PAYMENT)
     payment_date: Optional[date] = None
-    notes: Optional[str] = None
+    notes: Optional[str] = Field(default=None, max_length=255)
 
 
 class PaymentOut(BaseModel):
@@ -186,22 +209,22 @@ class PaymentOut(BaseModel):
 # ---------- Loan ----------
 class LoanCreate(BaseModel):
     client_id: int
-    principal: float = Field(gt=0)
-    interest_rate: float = Field(ge=0)
+    principal: float = Field(gt=0, le=MAX_PRINCIPAL)
+    interest_rate: float = Field(ge=0, le=MAX_INTEREST_RATE)
     term_months: int = Field(gt=0, le=120)
-    late_fee_per_day: float = Field(ge=0)
+    late_fee_per_day: float = Field(ge=0, le=MAX_LATE_FEE_PER_DAY)
     start_date: Optional[date] = None
 
 
 class LoanUpdate(BaseModel):
-    interest_rate: Optional[float] = Field(default=None, ge=0)
-    late_fee_per_day: Optional[float] = Field(default=None, ge=0)
+    interest_rate: Optional[float] = Field(default=None, ge=0, le=MAX_INTEREST_RATE)
+    late_fee_per_day: Optional[float] = Field(default=None, ge=0, le=MAX_LATE_FEE_PER_DAY)
 
 
 class LoanPayoffRequest(BaseModel):
-    payoff_amount: float = Field(gt=0)
+    payoff_amount: float = Field(gt=0, le=MAX_PAYMENT)
     payment_date: Optional[date] = None
-    notes: Optional[str] = None
+    notes: Optional[str] = Field(default=None, max_length=255)
 
 
 class LoanOut(BaseModel):
@@ -273,11 +296,41 @@ class NotificationSettingsOut(BaseModel):
     class Config:
         from_attributes = True
 
+    @field_validator("telegram_bot_token")
+    @classmethod
+    def _mask_token(cls, value: Optional[str]) -> Optional[str]:
+        # O token dá controle total do bot: quem o lê pode ler as conversas e enviar
+        # mensagens em nome da empresa. A tela só precisa saber SE existe e os
+        # últimos caracteres; o valor completo nunca volta do servidor.
+        return mask_secret(value)
+
 
 class NotificationSettingsUpdate(BaseModel):
-    telegram_bot_token: Optional[str] = None
-    telegram_chat_id: Optional[str] = None
+    # Formato do token do @BotFather: "<id numérico>:<35 caracteres>". Validar evita
+    # lixo e impede que o valor vire outro caminho na URL da API do Telegram
+    # (o token é colocado em https://api.telegram.org/bot<TOKEN>/sendMessage).
+    telegram_bot_token: Optional[str] = Field(default=None, max_length=100)
+    # ID numérico do chat/grupo (grupos são negativos) ou @nome_do_canal.
+    telegram_chat_id: Optional[str] = Field(default=None, max_length=64)
     notify_days_before: Optional[int] = Field(default=None, ge=0, le=60)
+
+    @field_validator("telegram_bot_token")
+    @classmethod
+    def _check_token(cls, value: Optional[str]) -> Optional[str]:
+        if value is None or value.startswith(SECRET_MASK):
+            return value  # None = apagar; valor mascarado = "não alterar" (tratado no router)
+        if not re.fullmatch(r"\d{5,15}:[A-Za-z0-9_-]{30,60}", value):
+            raise ValueError("Token do bot inválido. Cole o token exatamente como o @BotFather enviou.")
+        return value
+
+    @field_validator("telegram_chat_id")
+    @classmethod
+    def _check_chat_id(cls, value: Optional[str]) -> Optional[str]:
+        if value is None:
+            return value
+        if not re.fullmatch(r"-?\d{1,20}|@[A-Za-z0-9_]{5,32}", value):
+            raise ValueError("ID do chat inválido. Use o número do chat/grupo (ex.: -1001234567890) ou @nome_do_canal.")
+        return value
 
 
 # ---------- Permissões do Consultor ----------
@@ -318,12 +371,12 @@ class ConsultantPermissionsUpdate(BaseModel):
 # ---------- Modelos de mensagem WhatsApp ----------
 class WhatsappTemplateCreate(BaseModel):
     name: str = Field(min_length=2, max_length=100)
-    content: str = Field(min_length=1)
+    content: str = Field(min_length=1, max_length=2000)
 
 
 class WhatsappTemplateUpdate(BaseModel):
     name: Optional[str] = Field(default=None, min_length=2, max_length=100)
-    content: Optional[str] = Field(default=None, min_length=1)
+    content: Optional[str] = Field(default=None, min_length=1, max_length=2000)
 
 
 class WhatsappTemplateOut(BaseModel):

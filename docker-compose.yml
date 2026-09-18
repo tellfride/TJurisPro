@@ -34,7 +34,11 @@ services:
     image: tjurispro-app:local
     container_name: tjurispro
     restart: unless-stopped
-    env_file: .env
+    # app.env = .env SEM MYSQL_ROOT_PASSWORD (chave-mestra do banco) e ADMIN_PASSWORD
+    # (só o seed.py de 1ª instalação usa): o contêiner web não precisa dos dois e, se
+    # for invadido, o atacante lê o ambiente. Ao mudar um valor em .env, mude aqui também.
+    # Para rodar o seed: docker compose run --rm -e ADMIN_PASSWORD='...' app python seed.py
+    env_file: app.env
     environment:
       # O bloqueio de login por IP usa request.client.host. Atrás do nginx + docker-proxy
       # todo mundo chegaria com o IP do gateway do Docker (3 erros de qualquer pessoa
