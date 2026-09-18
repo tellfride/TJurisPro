@@ -22,6 +22,8 @@ class Settings:
     jwt_algorithm: str = "HS256"
     jwt_expire_hours: int = int(_env("JWT_EXPIRE_HOURS", "8"))
 
+    cors_origins: list[str] = [o.strip() for o in _env("CORS_ORIGINS", "").split(",") if o.strip()]
+
     mysqldump_path: str = _env("MYSQLDUMP_PATH", "mysqldump")
     backup_dir: str = _env("BACKUP_DIR", "../backups")
     backup_retention_days: int = int(_env("BACKUP_RETENTION_DAYS", "30"))
@@ -39,3 +41,9 @@ class Settings:
 
 
 settings = Settings()
+
+if settings.jwt_secret in ("", "change-me"):
+    raise RuntimeError(
+        "JWT_SECRET não definido (ou deixado no valor padrão 'change-me') em backend/.env. "
+        "Gere um valor forte, ex.: openssl rand -hex 32"
+    )

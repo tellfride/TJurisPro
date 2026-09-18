@@ -5,6 +5,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
+from .config import settings as app_settings
 from .database import Base, engine
 from .routers import audit, auth, clients, companies, dashboard, imports, loans, reports, settings, users, whatsapp_templates
 from .services.scheduler import start_scheduler
@@ -13,9 +14,13 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 
 app = FastAPI(title="JurisPRO", version="1.0.0")
 
+# Frontend e API são servidos pela mesma origem (StaticFiles montado abaixo),
+# então CORS não é necessário para o uso normal do sistema. allow_origins vazio
+# por padrão (fecha requisições cross-origin); defina CORS_ORIGINS no .env
+# (lista separada por vírgula) só se precisar integrar outro front-end/domínio.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=app_settings.cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
