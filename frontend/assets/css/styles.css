@@ -570,3 +570,50 @@ input:focus, select:focus, textarea:focus {
   .stat-grid { grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); }
   table { min-width: 620px; }
 }
+
+/* ---- Rodapé (versão + crédito do desenvolvedor) — renderAppFooter() em common.js ---- */
+.app-footer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 0.6rem 1.4rem;
+  padding: 1.1rem 1rem 1.3rem;
+  font-size: 0.78rem;
+  color: var(--color-text-muted);
+}
+.app-footer-version {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  white-space: nowrap;
+}
+.app-footer-version i {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--color-success);
+  box-shadow: 0 0 6px var(--color-success);
+}
+.app-footer-dev b { color: var(--color-text); font-weight: 700; }
+.app-footer-zap {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.35rem 0.85rem;
+  border-radius: 999px;
+  border: 1px solid var(--color-success);
+  border-color: color-mix(in srgb, var(--color-success) 55%, transparent);
+  background: var(--color-success-bg);
+  color: var(--color-success);
+  font-weight: 600;
+  white-space: nowrap;
+  text-decoration: none;
+}
+.app-footer-zap:hover { filter: brightness(0.94); text-decoration: none; }
+.app-footer-zap svg { width: 15px; height: 15px; fill: currentColor; flex-shrink: 0; }
+
+/* Tela de login: rodapé fixo na base do card centralizado (reserva o espaço
+   embaixo para não sobrepor o card em telas baixas). */
+.login-shell { position: relative; padding-bottom: 4.5rem; }
+.login-shell .app-footer { position: absolute; left: 0; right: 0; bottom: 0; }

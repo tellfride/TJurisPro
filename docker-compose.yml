@@ -35,6 +35,13 @@ services:
     container_name: tjurispro
     restart: unless-stopped
     env_file: .env
+    environment:
+      # O bloqueio de login por IP usa request.client.host. Atrás do nginx + docker-proxy
+      # todo mundo chegaria com o IP do gateway do Docker (3 erros de qualquer pessoa
+      # travariam o login de TODOS). O nginx grava o IP real em X-Forwarded-For
+      # (sobrescrevendo, sem aceitar o que o cliente mandar) e o uvicorn passa a usá-lo.
+      # "*" é seguro aqui porque a porta só é publicada em 127.0.0.1 (só o nginx alcança).
+      FORWARDED_ALLOW_IPS: "*"
     depends_on:
       mysql:
         condition: service_healthy

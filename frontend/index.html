@@ -37,6 +37,7 @@
   <script src="/assets/js/common.js"></script>
   <script>
     document.getElementById("themeToggle").addEventListener("click", toggleTheme);
+    renderAppFooter(document.querySelector(".login-shell"));
 
     function landingPage(user) {
       if (user.role === "consultor" && !consultorPerm(user, "view_dashboard")) return "/clientes.html";
